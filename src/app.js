@@ -77,8 +77,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // TODO: Flag specific audio IDs as benchmark when we know which 5 they are
-  // For now, the benchmark filter will show 0 until they're identified
+  // Flag the 5 gold standard benchmark files
+  const benchmarkNames = [
+    '0015--5711-Tamuz 12 Sicha 1.mp3',       // 5711 Tamuz 12 Sicha
+    '0142--5715-Tamuz 13d Sicha 3.mp3',       // 5715 Tamuz 13 Sicha
+    '2781--5741-Nissan 11e Mamar.mp3',        // 5741 Nissan 11 Maamar
+    '0003--5711-Shvat 10c Mamar.mp3',         // 5711 10 Shevat Maamar (least clear)
+    '2925--5742-Kislev 19 Sicha 1.mp3',       // 5742 19 Kislev Sicha (later years)
+  ];
+  const benchmarkSet = new Set(benchmarkNames);
+  (raw.allAudio || []).forEach(a => {
+    if (benchmarkSet.has(a.name)) {
+      a.isBenchmark = true;
+      a.isSelected50hr = false; // Benchmark NEVER in training set
+    }
+  });
 
   const data = {
     audio: raw.allAudio || [],
