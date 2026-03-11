@@ -1,0 +1,18 @@
+{
+  "stats": {
+    "totalAudio": 4669,
+    "totalTranscripts": 1065,
+    "matched": 1809,
+    "unmatchedAudio": 2860,
+    "unmatchedTranscripts": 447,
+    "selected50hr": 423,
+    "selected50hrMinutes": 2999
+  },
+  "selected": [],
+  "matched": [],
+  "allAudio": [],
+  "allTranscripts": [],
+  "unmatchedAudio": [],
+  "unmatchedTranscripts": [],
+  "benchmark": []
+}
