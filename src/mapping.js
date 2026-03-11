@@ -1,0 +1,269 @@
+import { getState, updateState } from './state.js';
+import { truncateWords, formatConfidence } from './utils.js';
+
+const CONTENT_TYPES = ['sicha', 'maamar', 'farbrengen'];
+
+function scoreMatch(audio, transcript) {
+  let score = 0;
+  const reasons = [];
+
+  const aYear = audio.year || '';
+  const tYear = transcript.year || '';
+  const aMonth = audio.month || '';
+  const tMonth = transcript.month || '';
+  const aDay = audio.day;
+  const tDay = transcript.day;
+
+  if (aYear && tYear && aYear === tYear) {
+    if (aMonth && tMonth && aMonth === tMonth) {
+      if (aDay && tDay && aDay === tDay) {
+        score = 1.0;
+        reasons.push('exact date');
+      } else {
+        score = 0.5;
+        reasons.push('year+month');
+      }
+    } else {
+      score = 0.25;
+      reasons.push('year only');
+    }
+  }
+
+  const aName = (audio.name || '').toLowerCase();
+  const tName = (transcript.name || '').toLowerCase();
+  for (const kw of CONTENT_TYPES) {
+    if (aName.includes(kw) && tName.includes(kw)) {
+      score += 0.15;
+      reasons.push(kw);
+      break;
+    }
+  }
+
+  if (score > 0 && audio.type) {
+    const audioType = audio.type.toLowerCase();
+    if (tName.includes(audioType) && !reasons.some(r => CONTENT_TYPES.includes(r))) {
+      score += 0.15;
+      reasons.push(audio.type);
+    }
+  }
+
+  return { score: Math.min(score, 1.0), matchReason: reasons.join(' + ') };
+}
+
+export function getSuggestedMatches(audioItem, allTranscripts, existingMappings) {
+  const mappedTranscriptIds = new Set(
+    Object.values(existingMappings || {}).map(m => m.transcriptId)
+  );
+
+  const scored = [];
+  for (const t of allTranscripts) {
+    if (mappedTranscriptIds.has(t.id)) continue;
+    const { score, matchReason } = scoreMatch(audioItem, t);
+    if (score > 0) {
+      scored.push({
+        transcriptId: t.id,
+        score,
+        matchReason,
+        firstName: t.firstLine || '',
+      });
+    }
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 5);
+}
+
+export function renderSuggestedMatches(audioId, container, state, onLink) {
+  container.innerHTML = '';
+  const audio = state.audio.find(a => a.id === audioId);
+  if (!audio) return;
+
+  const suggestions = getSuggestedMatches(audio, state.transcripts, state.mappings);
+  if (suggestions.length === 0) {
+    container.innerHTML = '<span class="text-secondary">No suggestions found</span>';
+    return;
+  }
+
+  const list = document.createElement('div');
+  list.className = 'suggestions-list';
+
+  for (const s of suggestions) {
+    const row = document.createElement('div');
+    row.className = 'suggestion-row';
+    row.addEventListener('click', () => onLink(audioId, s.transcriptId));
+
+    const badge = document.createElement('span');
+    badge.className = 'confidence-badge';
+    badge.textContent = formatConfidence(s.score);
+    if (s.score >= 0.8) badge.classList.add('confidence-high');
+    else if (s.score >= 0.4) badge.classList.add('confidence-mid');
+    else badge.classList.add('confidence-low');
+
+    const preview = document.createElement('span');
+    preview.className = 'suggestion-preview hebrew-text';
+    preview.dir = 'rtl';
+    preview.textContent = truncateWords(s.firstName, 15);
+
+    const reason = document.createElement('span');
+    reason.className = 'suggestion-reason text-secondary';
+    reason.textContent = s.matchReason;
+
+    row.appendChild(badge);
+    row.appendChild(preview);
+    row.appendChild(reason);
+    list.appendChild(row);
+  }
+
+  container.appendChild(list);
+}
+
+export function linkMatch(audioId, transcriptId, score, reason) {
+  updateState('mappings', audioId, {
+    transcriptId,
+    confidence: score,
+    matchReason: reason,
+    confirmedBy: 'user',
+    confirmedAt: new Date().toISOString(),
+  });
+}
+
+export function unlinkMatch(audioId) {
+  const state = getState();
+  if (state && state.mappings && state.mappings[audioId]) {
+    delete state.mappings[audioId];
+    updateState('mappings', null, state.mappings);
+  }
+}
+
+export function renderSearchModal(container, state, onSelect) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal search-modal';
+
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+  header.innerHTML = '<h2>Search Transcripts</h2>';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn btn-close';
+  closeBtn.textContent = '\u00D7';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  header.appendChild(closeBtn);
+
+  const filters = document.createElement('div');
+  filters.className = 'search-filters';
+
+  const years = [...new Set(state.transcripts.map(t => t.year).filter(Boolean))].sort();
+  const months = [...new Set(state.transcripts.map(t => t.month).filter(Boolean))];
+  const types = [...new Set(state.transcripts.map(t => t.type).filter(Boolean))];
+
+  const yearSelect = createSelect('year', 'All Years', years);
+  const monthSelect = createSelect('month', 'All Months', months);
+  const typeSelect = createSelect('type', 'All Types', types);
+
+  const textInput = document.createElement('input');
+  textInput.type = 'text';
+  textInput.className = 'search-input';
+  textInput.placeholder = 'Search by name or text...';
+
+  filters.appendChild(yearSelect);
+  filters.appendChild(monthSelect);
+  filters.appendChild(typeSelect);
+  filters.appendChild(textInput);
+
+  const results = document.createElement('div');
+  results.className = 'search-results';
+
+  function renderResults() {
+    results.innerHTML = '';
+    const yearVal = yearSelect.value;
+    const monthVal = monthSelect.value;
+    const typeVal = typeSelect.value;
+    const textVal = textInput.value.toLowerCase();
+
+    const filtered = state.transcripts.filter(t => {
+      if (yearVal && t.year !== yearVal) return false;
+      if (monthVal && t.month !== monthVal) return false;
+      if (typeVal && t.type !== typeVal) return false;
+      if (textVal) {
+        const name = (t.name || '').toLowerCase();
+        const first = (t.firstLine || '').toLowerCase();
+        if (!name.includes(textVal) && !first.includes(textVal)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      results.innerHTML = '<div class="text-secondary" style="padding:1rem">No transcripts found</div>';
+      return;
+    }
+
+    for (const t of filtered.slice(0, 100)) {
+      const row = document.createElement('div');
+      row.className = 'search-result-row';
+      row.addEventListener('click', () => {
+        onSelect(t.id);
+        overlay.remove();
+      });
+
+      const name = document.createElement('span');
+      name.className = 'result-name';
+      name.textContent = t.name || t.id;
+
+      const preview = document.createElement('span');
+      preview.className = 'result-preview hebrew-text';
+      preview.dir = 'rtl';
+      preview.textContent = truncateWords(t.firstLine || '', 15);
+
+      row.appendChild(name);
+      row.appendChild(preview);
+      results.appendChild(row);
+    }
+  }
+
+  yearSelect.addEventListener('change', renderResults);
+  monthSelect.addEventListener('change', renderResults);
+  typeSelect.addEventListener('change', renderResults);
+  textInput.addEventListener('input', renderResults);
+
+  modal.appendChild(header);
+  modal.appendChild(filters);
+  modal.appendChild(results);
+  overlay.appendChild(modal);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+
+  document.addEventListener('keydown', function handler(e) {
+    if (e.key === 'Escape') {
+      overlay.remove();
+      document.removeEventListener('keydown', handler);
+    }
+  });
+
+  container.appendChild(overlay);
+  renderResults();
+}
+
+function createSelect(name, placeholder, options) {
+  const select = document.createElement('select');
+  select.className = 'filter-select';
+  select.name = name;
+
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = placeholder;
+  select.appendChild(defaultOpt);
+
+  for (const opt of options) {
+    const o = document.createElement('option');
+    o.value = opt;
+    o.textContent = opt;
+    select.appendChild(o);
+  }
+
+  return select;
+}
