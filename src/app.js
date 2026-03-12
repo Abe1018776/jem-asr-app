@@ -6,7 +6,9 @@ import { batchAlign } from './alignment.js';
 import { renderReviewPanel, approveAll } from './review.js';
 import { renderKaraokePlayer } from './karaoke.js';
 import { renderAsrConfig, runBenchmark, renderBenchmarkTable } from './benchmark.js';
-import { exportCSV, debounce } from './utils.js';
+import { exportCSV, debounce, truncateWords } from './utils.js';
+
+const R2_BASE = 'https://pub-c3d984b0acf3415ab61d979b1a4d9665.r2.dev';
 
 // ── App init ────────────────────────────────────────────────────────
 
@@ -90,6 +92,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (benchmarkSet.has(a.name)) {
       a.isBenchmark = true;
       a.isSelected50hr = false; // Benchmark NEVER in training set
+      a.r2Link = `${R2_BASE}/benchmark/${encodeURIComponent(a.name)}`;
+    } else if (selectedNames.has(a.name)) {
+      a.r2Link = `${R2_BASE}/training/${encodeURIComponent(a.name)}`;
     }
   });
 
@@ -155,6 +160,65 @@ document.addEventListener('DOMContentLoaded', async () => {
     const panel = document.createElement('div');
     panel.className = 'expanded-panel';
 
+    // ── Always show audio player + transcript ──
+    const playerSection = document.createElement('div');
+    playerSection.className = 'player-section';
+
+    // Audio player
+    const audioUrl = audio.r2Link || audio.driveLink;
+    if (audioUrl) {
+      const playerEl = document.createElement('audio');
+      playerEl.controls = true;
+      playerEl.preload = 'none';
+      playerEl.src = audioUrl;
+      playerEl.className = 'audio-player';
+      playerSection.appendChild(playerEl);
+    } else {
+      const noAudio = document.createElement('div');
+      noAudio.className = 'no-audio';
+      noAudio.textContent = 'No audio URL available';
+      playerSection.appendChild(noAudio);
+    }
+
+    // Transcript display
+    const mapping = state.mappings[audioId];
+    if (mapping) {
+      const transcript = state.transcripts.find(t => t.id === mapping.transcriptId);
+      if (transcript) {
+        const transcriptDiv = document.createElement('div');
+        transcriptDiv.className = 'transcript-section';
+
+        const tHeader = document.createElement('div');
+        tHeader.className = 'transcript-header';
+        tHeader.innerHTML = `<strong>Transcript:</strong> ${transcript.name}`;
+        if (transcript.driveLink) {
+          const viewLink = document.createElement('a');
+          viewLink.href = transcript.driveLink;
+          viewLink.target = '_blank';
+          viewLink.className = 'transcript-link';
+          viewLink.textContent = ' Open in Drive ↗';
+          tHeader.appendChild(viewLink);
+        }
+        transcriptDiv.appendChild(tHeader);
+
+        // Show first line / cleaned text
+        const textContent = state.cleaning[audioId]?.cleanedText
+          || transcript.firstLine
+          || '';
+        if (textContent) {
+          const textDiv = document.createElement('div');
+          textDiv.className = 'transcript-text';
+          textDiv.dir = 'rtl';
+          textDiv.textContent = textContent;
+          transcriptDiv.appendChild(textDiv);
+        }
+        playerSection.appendChild(transcriptDiv);
+      }
+    }
+
+    panel.appendChild(playerSection);
+
+    // ── Status-specific content below player ──
     if (audio.isBenchmark) {
       // Benchmark row: show benchmark results + config
       const configBtn = document.createElement('button');
