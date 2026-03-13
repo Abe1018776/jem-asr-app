@@ -1681,6 +1681,80 @@ input {
   white-space: pre-wrap;
 }
 
+/* === Transcript Editor === */
+.transcript-editor {
+  width: 100%;
+  min-height: 200px;
+  max-height: 500px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 8px 0;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', 'Times New Roman', serif;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: var(--text);
+  resize: vertical;
+  white-space: pre-wrap;
+}
+.transcript-editor:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* === Version Tabs === */
+.version-tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0;
+}
+.version-tab {
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: all 0.15s;
+}
+.version-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.version-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* === Version Type Badges === */
+.version-type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.version-type-manual { background: var(--gray-dim); color: var(--gray); }
+.version-type-cleaned { background: var(--cyan-dim); color: var(--cyan); }
+.version-type-asr { background: var(--purple-dim); color: var(--purple); }
+.version-type-edited { background: var(--blue-dim); color: var(--blue); }
+
+.save-status {
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
 /* === Search modal transcript preview === */
 .search-result-preview-btn {
   padding: 2px 8px;

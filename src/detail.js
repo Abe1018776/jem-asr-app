@@ -1,4 +1,4 @@
-import { initState, getState, getStatus, exportState, importState } from './state.js';
+import { initState, getState, getStatus, getVersions, getBestVersion, addVersion, updateVersion, exportState, importState } from './state.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
 import { alignRow } from './alignment.js';
@@ -219,57 +219,164 @@ function createSection(title) {
 
 function renderMappingSection(audioId, state, container, pageContainer) {
   container.innerHTML = '';
+  const versions = getVersions(audioId);
   const mapping = state.mappings[audioId];
 
-  if (mapping) {
-    const transcript = state.transcripts.find(t => t.id === mapping.transcriptId);
-    const info = document.createElement('div');
-    info.className = 'detail-mapping-info';
-    info.innerHTML = '';
+  if (mapping || versions.length > 0) {
+    const manual = versions.find(v => v.type === 'manual');
+    const transcript = manual
+      ? state.transcripts.find(t => t.id === manual.sourceTranscriptId)
+      : (mapping ? state.transcripts.find(t => t.id === mapping.transcriptId) : null);
 
+    // Header: linked transcript name
     const label = document.createElement('div');
     label.style.cssText = 'margin-bottom:8px;';
     const strong = document.createElement('strong');
     strong.textContent = 'Linked to: ';
     label.appendChild(strong);
-    label.appendChild(document.createTextNode(transcript ? transcript.name : mapping.transcriptId));
-    if (mapping.confidence) {
-      const conf = document.createElement('span');
-      conf.className = 'text-secondary';
-      conf.textContent = ` (${formatConfidence(mapping.confidence)} confidence)`;
-      label.appendChild(conf);
-    }
-    info.appendChild(label);
+    label.appendChild(document.createTextNode(transcript ? transcript.name : (mapping?.transcriptId || 'unknown')));
+    container.appendChild(label);
 
-    // Show transcript text
-    if (transcript) {
-      const preview = document.createElement('div');
-      preview.className = 'detail-transcript-preview';
-      preview.dir = 'rtl';
+    // Version tabs
+    if (versions.length > 0) {
+      const tabBar = document.createElement('div');
+      tabBar.className = 'version-tab-bar';
+      const contentArea = document.createElement('div');
 
-      if (transcript.text) {
-        preview.textContent = transcript.text;
-      } else {
-        preview.textContent = transcript.firstLine || '';
-        // Auto-load full text from R2
-        if (transcript.r2TranscriptLink) {
-          fetch(transcript.r2TranscriptLink).then(resp => {
-            if (resp.ok) return resp.text();
-            return null;
-          }).then(text => {
-            if (text) {
-              transcript.text = text;
-              preview.textContent = text;
-            }
-          }).catch(() => {});
+      let activeVersionId = getBestVersion(audioId)?.id || versions[0].id;
+
+      function renderVersionContent(versionId) {
+        contentArea.innerHTML = '';
+        const version = versions.find(v => v.id === versionId);
+        if (!version) return;
+
+        // Update tab active states
+        tabBar.querySelectorAll('.version-tab').forEach(tab => {
+          tab.classList.toggle('active', tab.dataset.versionId === versionId);
+        });
+
+        // Editable textarea
+        const textarea = document.createElement('textarea');
+        textarea.className = 'transcript-editor';
+        textarea.dir = 'rtl';
+        textarea.rows = 12;
+        textarea.placeholder = 'Loading transcript text...';
+
+        // Load text into textarea
+        if (version.text) {
+          textarea.value = version.text;
+        } else if (transcript?.text) {
+          textarea.value = transcript.text;
+          version.text = transcript.text;
+        } else if (transcript?.firstLine) {
+          textarea.value = transcript.firstLine;
+          // Auto-load full text
+          if (transcript.r2TranscriptLink) {
+            fetch(transcript.r2TranscriptLink).then(r => r.ok ? r.text() : null).then(text => {
+              if (text) {
+                transcript.text = text;
+                if (!version.text) {
+                  version.text = text;
+                  textarea.value = text;
+                }
+              }
+            }).catch(() => {});
+          }
         }
+
+        // Save on change (debounced)
+        let saveTimer = null;
+        const saveStatus = document.createElement('span');
+        saveStatus.className = 'save-status text-secondary';
+        textarea.addEventListener('input', () => {
+          saveStatus.textContent = 'Unsaved...';
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => {
+            updateVersion(audioId, version.id, { text: textarea.value });
+            saveStatus.textContent = 'Saved';
+            setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+          }, 800);
+        });
+
+        contentArea.appendChild(textarea);
+
+        // Info bar below textarea
+        const infoBar = document.createElement('div');
+        infoBar.style.cssText = 'display:flex;align-items:center;gap:12px;margin-top:6px;flex-wrap:wrap;';
+        const typeLabel = document.createElement('span');
+        typeLabel.className = `version-type-badge version-type-${version.type}`;
+        typeLabel.textContent = version.type;
+        infoBar.appendChild(typeLabel);
+        if (version.cleanRate) {
+          const cr = document.createElement('span');
+          cr.className = 'text-secondary';
+          cr.textContent = `Clean rate: ${version.cleanRate}%`;
+          infoBar.appendChild(cr);
+        }
+        if (version.alignment) {
+          const al = document.createElement('span');
+          al.className = 'text-secondary';
+          al.textContent = `Avg confidence: ${formatConfidence(version.alignment.avgConfidence)}`;
+          infoBar.appendChild(al);
+        }
+        infoBar.appendChild(saveStatus);
+
+        // "Save as new edited version" button
+        const saveAsBtn = document.createElement('button');
+        saveAsBtn.className = 'action-btn';
+        saveAsBtn.textContent = 'Save as Edited Version';
+        saveAsBtn.addEventListener('click', () => {
+          const newText = textarea.value;
+          if (newText === version.text && version.type === 'edited') return;
+          addVersion(audioId, {
+            type: 'edited',
+            parentVersionId: version.id,
+            sourceTranscriptId: version.sourceTranscriptId || manual?.sourceTranscriptId,
+            text: newText,
+            createdBy: 'user',
+          });
+          const s = getState();
+          const audio = s.audio.find(a => a.id === audioId);
+          renderDetailPage(audioId, audio, s, pageContainer);
+        });
+        infoBar.appendChild(saveAsBtn);
+
+        contentArea.appendChild(infoBar);
       }
-      info.appendChild(preview);
+
+      // Build tabs
+      for (const v of versions) {
+        const tab = document.createElement('button');
+        tab.className = 'version-tab';
+        tab.dataset.versionId = v.id;
+        tab.textContent = v.type.charAt(0).toUpperCase() + v.type.slice(1);
+        if (v.id === activeVersionId) tab.classList.add('active');
+        tab.addEventListener('click', () => {
+          activeVersionId = v.id;
+          renderVersionContent(v.id);
+        });
+        tabBar.appendChild(tab);
+      }
+
+      container.appendChild(tabBar);
+      container.appendChild(contentArea);
+      renderVersionContent(activeVersionId);
+    } else if (transcript) {
+      // No versions yet, just show text
+      const textarea = document.createElement('textarea');
+      textarea.className = 'transcript-editor';
+      textarea.dir = 'rtl';
+      textarea.rows = 12;
+      textarea.value = transcript.text || transcript.firstLine || '';
+      if (transcript.r2TranscriptLink && !transcript.text) {
+        fetch(transcript.r2TranscriptLink).then(r => r.ok ? r.text() : null).then(text => {
+          if (text) { transcript.text = text; textarea.value = text; }
+        }).catch(() => {});
+      }
+      container.appendChild(textarea);
     }
 
-    container.appendChild(info);
-
-    // Buttons
+    // Action buttons
     const btnBar = document.createElement('div');
     btnBar.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
 
@@ -280,6 +387,8 @@ function renderMappingSection(audioId, state, container, pageContainer) {
       renderSearchModal(document.body, getState(), (transcriptId) => {
         linkMatch(audioId, transcriptId, 1.0, 'manual search');
         const s = getState();
+        // Reset versions for this audio
+        s.transcriptVersions[audioId] = [];
         if (s.cleaning[audioId]) delete s.cleaning[audioId];
         if (s.alignments[audioId]) delete s.alignments[audioId];
         if (s.reviews[audioId]) delete s.reviews[audioId];
@@ -295,6 +404,7 @@ function renderMappingSection(audioId, state, container, pageContainer) {
     unlinkBtn.addEventListener('click', () => {
       unlinkMatch(audioId);
       const s = getState();
+      s.transcriptVersions[audioId] = [];
       if (s.cleaning[audioId]) delete s.cleaning[audioId];
       if (s.alignments[audioId]) delete s.alignments[audioId];
       if (s.reviews[audioId]) delete s.reviews[audioId];
