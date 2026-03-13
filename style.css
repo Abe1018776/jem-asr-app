@@ -2059,6 +2059,7 @@ input {
   border-bottom: 1px solid var(--border);
   font-size: 0.88rem;
   line-height: 1.6;
+  flex-wrap: wrap;
 }
 
 .diff-row:last-child {
@@ -2099,44 +2100,57 @@ input {
   gap: 4px;
 }
 
-.diff-line-orig {
+/* Word-level diff content */
+.diff-word-content {
+  flex: 1;
+  min-width: 0;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
+  word-break: break-word;
+  line-height: 1.8;
+  padding: 2px 0;
+}
+
+.diff-word-removed {
   background: var(--red-dim);
-  text-decoration: line-through;
-  padding: 4px 8px;
-  border-radius: 3px;
-  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
-  word-break: break-word;
   color: var(--red);
+  text-decoration: line-through;
+  padding: 1px 2px;
+  border-radius: 2px;
 }
 
-.diff-line-clean {
-  background: var(--green-dim);
+/* Editable cleaned row below */
+.diff-edit-row {
+  flex-basis: 100%;
+  margin-top: 4px;
+  margin-left: 44px;
   padding: 4px 8px;
+  background: var(--green-dim);
   border-radius: 3px;
   font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
   word-break: break-word;
-}
-
-.diff-side-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-decoration: none;
-  display: inline-block;
-  margin-inline-end: 6px;
-  direction: ltr;
-}
-
-.diff-editable {
   outline: none;
-  border-bottom: 1px dashed var(--border);
-  cursor: text;
+  border: 1px dashed transparent;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
-.diff-editable:focus {
-  border-bottom-color: var(--accent);
+.diff-edit-row:focus {
+  border-color: var(--accent);
   background: var(--surface);
-  border-radius: 2px;
+  color: var(--text);
+}
+
+/* Cleaning button bar */
+.clean-btn-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.clean-pass-btn {
+  font-size: 0.8rem;
+  padding: 5px 10px;
 }
 
 .diff-unchanged {

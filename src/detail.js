@@ -1,6 +1,6 @@
 import { initState, getState, getStatus, getVersions, getBestVersion, addVersion, updateVersion, updateState, exportState, importState } from './state.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
-import { batchClean } from './cleaning.js';
+import { batchClean, cleanBrackets, cleanParentheses, cleanSectionMarkers, cleanSymbols, cleanWhitespace, calculateCleanRate } from './cleaning.js';
 import { alignRow } from './alignment.js';
 import { renderReviewPanel } from './review.js';
 import { renderKaraokePlayer } from './karaoke.js';
@@ -603,41 +603,80 @@ function renderMappingSection(audioId, state, container, pageContainer) {
 function renderCleanSection(audioId, state, container, pageContainer) {
   const cleaning = state.cleaning[audioId];
 
+  // Get the current text to clean from
+  function getCurrentText() {
+    const cleaning = getState().cleaning[audioId];
+    if (cleaning) return cleaning.cleanedText || cleaning.originalText || '';
+    // Fall back to transcript text
+    const mapping = getState().mappings[audioId];
+    if (!mapping) return '';
+    const transcript = getState().transcripts.find(t => t.id === mapping.transcriptId);
+    return transcript?.text || transcript?.firstLine || '';
+  }
+
+  function getOriginalText() {
+    const cleaning = getState().cleaning[audioId];
+    return cleaning?.originalText || getCurrentText();
+  }
+
+  // Individual cleaning buttons
+  const btnBar = document.createElement('div');
+  btnBar.className = 'clean-btn-bar';
+
+  const passes = [
+    { label: 'Remove [brackets]', fn: cleanBrackets },
+    { label: 'Remove (parentheses)', fn: cleanParentheses },
+    { label: 'Remove section markers', fn: cleanSectionMarkers },
+    { label: 'Remove symbols !?-"…', fn: cleanSymbols },
+    { label: 'Clean whitespace', fn: cleanWhitespace },
+  ];
+
+  passes.forEach(pass => {
+    const btn = document.createElement('button');
+    btn.className = 'action-btn clean-pass-btn';
+    btn.textContent = pass.label;
+    btn.addEventListener('click', () => {
+      const original = getOriginalText();
+      const current = getCurrentText();
+      const result = pass.fn(current);
+      const cleanRate = calculateCleanRate(original, result);
+      updateState('cleaning', audioId, {
+        originalText: original,
+        cleanedText: result,
+        cleanRate,
+        cleanedAt: new Date().toISOString(),
+      });
+      const s = getState();
+      const audio = s.audio.find(a => a.id === audioId);
+      renderDetailPage(audioId, audio, s, pageContainer);
+    });
+    btnBar.appendChild(btn);
+  });
+
+  const cleanAllBtn = document.createElement('button');
+  cleanAllBtn.className = 'action-btn action-btn-primary clean-pass-btn';
+  cleanAllBtn.textContent = 'Clean All';
+  cleanAllBtn.addEventListener('click', async () => {
+    cleanAllBtn.textContent = 'Cleaning...';
+    cleanAllBtn.disabled = true;
+    await batchClean([audioId], getState(), () => {});
+    const s = getState();
+    const audio = s.audio.find(a => a.id === audioId);
+    renderDetailPage(audioId, audio, s, pageContainer);
+  });
+  btnBar.appendChild(cleanAllBtn);
+
+  container.appendChild(btnBar);
+
   if (cleaning) {
     const info = document.createElement('div');
     info.className = 'text-secondary';
-    info.style.marginBottom = '8px';
+    info.style.margin = '8px 0';
     info.textContent = `Clean rate: ${cleaning.cleanRate}% | Cleaned at: ${new Date(cleaning.cleanedAt).toLocaleString()}`;
     container.appendChild(info);
 
-    const reCleanBtn = document.createElement('button');
-    reCleanBtn.className = 'action-btn';
-    reCleanBtn.textContent = 'Re-Clean';
-    reCleanBtn.addEventListener('click', async () => {
-      reCleanBtn.textContent = 'Cleaning...';
-      reCleanBtn.disabled = true;
-      await batchClean([audioId], getState(), () => {});
-      const s = getState();
-      const audio = s.audio.find(a => a.id === audioId);
-      renderDetailPage(audioId, audio, s, pageContainer);
-    });
-    container.appendChild(reCleanBtn);
-
     // Row-by-row diff viewer
     renderCleaningDiffViewer(audioId, cleaning, container, pageContainer);
-  } else {
-    const cleanBtn = document.createElement('button');
-    cleanBtn.className = 'btn btn-secondary';
-    cleanBtn.textContent = 'Run Cleaning';
-    cleanBtn.addEventListener('click', async () => {
-      cleanBtn.textContent = 'Cleaning...';
-      cleanBtn.disabled = true;
-      await batchClean([audioId], getState(), () => {});
-      const s = getState();
-      const audio = s.audio.find(a => a.id === audioId);
-      renderDetailPage(audioId, audio, s, pageContainer);
-    });
-    container.appendChild(cleanBtn);
   }
 }
 
@@ -1018,6 +1057,38 @@ function renderTrimControls(audioId, playerEl, container) {
   updateSlider();
 }
 
+// Word-level diff: returns array of {word, removed} tokens
+function wordDiff(origLine, cleanLine) {
+  const origWords = origLine.split(/(\s+)/);
+  const cleanSet = new Set(cleanLine.split(/\s+/).filter(Boolean));
+  // Simple approach: walk original words, mark ones not in cleaned as removed
+  // For better accuracy, do LCS-like matching
+  const cleanWords = cleanLine.split(/\s+/).filter(Boolean);
+  const result = [];
+  let ci = 0;
+  for (const token of origWords) {
+    if (/^\s+$/.test(token)) {
+      result.push({ text: token, removed: false, isSpace: true });
+      continue;
+    }
+    if (ci < cleanWords.length && token === cleanWords[ci]) {
+      result.push({ text: token, removed: false });
+      ci++;
+    } else {
+      // Check if this word appears later in clean
+      const ahead = cleanWords.indexOf(token, ci);
+      if (ahead >= 0) {
+        // Words between ci and ahead were inserted (rare for cleaning)
+        result.push({ text: token, removed: false });
+        ci = ahead + 1;
+      } else {
+        result.push({ text: token, removed: true });
+      }
+    }
+  }
+  return result;
+}
+
 function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
   const origLines = (cleaning.originalText || '').split('\n');
   const cleanLines = (cleaning.cleanedText || '').split('\n');
@@ -1037,12 +1108,12 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
   const viewer = document.createElement('div');
   viewer.className = 'diff-viewer';
 
-  // Header with explanation
+  // Header
   const header = document.createElement('div');
   header.className = 'diff-header';
-  header.innerHTML = '<strong>Cleaning Diff Review</strong> — ' +
-    '<span class="diff-legend-orig">Red strikethrough = original (removed by cleaning)</span> ' +
-    '<span class="diff-legend-clean">Green = cleaned result (click to edit inline)</span>';
+  header.innerHTML = '<strong>Cleaning Diff</strong> — ' +
+    '<span class="diff-legend-orig">Red strikethrough = removed</span> &nbsp; ' +
+    'Remaining text stays. Click cleaned text to edit inline.';
   viewer.appendChild(header);
 
   // Action bar
@@ -1056,7 +1127,7 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
 
   const acceptAllBtn = document.createElement('button');
   acceptAllBtn.className = 'action-btn';
-  acceptAllBtn.textContent = 'Accept All Changes';
+  acceptAllBtn.textContent = 'Accept All';
   acceptAllBtn.addEventListener('click', () => {
     rows.forEach(r => { if (r.changed) r.accepted = true; });
     viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = true; });
@@ -1065,7 +1136,7 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
 
   const rejectAllBtn = document.createElement('button');
   rejectAllBtn.className = 'action-btn action-btn-danger';
-  rejectAllBtn.textContent = 'Reject All (Keep Original)';
+  rejectAllBtn.textContent = 'Reject All';
   rejectAllBtn.addEventListener('click', () => {
     rows.forEach(r => { if (r.changed) r.accepted = false; });
     viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = false; });
@@ -1077,12 +1148,12 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
   const showOnlyCb = document.createElement('input');
   showOnlyCb.type = 'checkbox';
   showOnlyChanged.appendChild(showOnlyCb);
-  showOnlyChanged.appendChild(document.createTextNode(' Show only changed lines'));
+  showOnlyChanged.appendChild(document.createTextNode(' Changed only'));
   actions.appendChild(showOnlyChanged);
 
   viewer.appendChild(actions);
 
-  // Rows container
+  // Rows
   const rowsContainer = document.createElement('div');
   rowsContainer.className = 'diff-rows-container';
 
@@ -1097,58 +1168,57 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
     rowEl.appendChild(lineNum);
 
     if (row.changed) {
-      // Checkbox: checked = use cleaned, unchecked = keep original
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'diff-row-checkbox';
       cb.checked = row.accepted;
-      cb.title = 'Checked = accept cleaned version, Unchecked = keep original';
+      cb.title = 'Accept this change';
       cb.addEventListener('change', () => { row.accepted = cb.checked; });
       rowEl.appendChild(cb);
 
-      // Two-row layout: original on top, cleaned below
-      const diffBlock = document.createElement('div');
-      diffBlock.className = 'diff-block';
+      // Word-level diff display: show original with removed words struck through
+      const diffContent = document.createElement('div');
+      diffContent.className = 'diff-word-content';
+      diffContent.dir = 'rtl';
 
-      const origRow = document.createElement('div');
-      origRow.className = 'diff-line-orig';
-      origRow.dir = 'rtl';
-      const origLabel = document.createElement('span');
-      origLabel.className = 'diff-side-label';
-      origLabel.textContent = 'Original:';
-      origRow.appendChild(origLabel);
-      const origText = document.createElement('span');
-      origText.textContent = row.orig || '(empty line)';
-      origRow.appendChild(origText);
-      diffBlock.appendChild(origRow);
+      const tokens = wordDiff(row.orig, row.clean);
+      tokens.forEach(tok => {
+        if (tok.isSpace) {
+          diffContent.appendChild(document.createTextNode(tok.text));
+          return;
+        }
+        const span = document.createElement('span');
+        span.textContent = tok.text;
+        if (tok.removed) {
+          span.className = 'diff-word-removed';
+        }
+        diffContent.appendChild(span);
+      });
 
-      const cleanRow = document.createElement('div');
-      cleanRow.className = 'diff-line-clean';
-      cleanRow.dir = 'rtl';
-      const cleanLabel = document.createElement('span');
-      cleanLabel.className = 'diff-side-label';
-      cleanLabel.textContent = 'Cleaned:';
-      cleanRow.appendChild(cleanLabel);
-
-      if (row.clean) {
-        const cleanText = document.createElement('span');
-        cleanText.className = 'diff-editable';
-        cleanText.contentEditable = 'true';
-        cleanText.textContent = row.clean;
-        cleanText.title = 'Click to edit this line';
-        cleanText.addEventListener('blur', () => {
-          row.editedClean = cleanText.textContent;
-        });
-        cleanRow.appendChild(cleanText);
-      } else {
-        const removed = document.createElement('span');
-        removed.className = 'diff-line-removed-label';
-        removed.textContent = '(line removed)';
-        cleanRow.appendChild(removed);
+      // If entire line was removed
+      if (!row.clean.trim() && row.orig.trim()) {
+        diffContent.innerHTML = '';
+        const allRemoved = document.createElement('span');
+        allRemoved.className = 'diff-word-removed';
+        allRemoved.textContent = row.orig;
+        diffContent.appendChild(allRemoved);
       }
-      diffBlock.appendChild(cleanRow);
 
-      rowEl.appendChild(diffBlock);
+      rowEl.appendChild(diffContent);
+
+      // Editable cleaned text below
+      if (row.clean.trim()) {
+        const editRow = document.createElement('div');
+        editRow.className = 'diff-edit-row';
+        editRow.dir = 'rtl';
+        editRow.contentEditable = 'true';
+        editRow.textContent = row.clean;
+        editRow.title = 'Edit cleaned text';
+        editRow.addEventListener('blur', () => {
+          row.editedClean = editRow.textContent;
+        });
+        rowEl.appendChild(editRow);
+      }
     } else {
       const spacer = document.createElement('span');
       spacer.className = 'diff-row-checkbox-spacer';
@@ -1165,7 +1235,6 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
     rowEls.push({ el: rowEl, changed: row.changed });
   });
 
-  // Toggle to show only changed lines
   showOnlyCb.addEventListener('change', () => {
     rowEls.forEach(r => {
       if (!r.changed) r.el.style.display = showOnlyCb.checked ? 'none' : '';
@@ -1174,27 +1243,25 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
 
   viewer.appendChild(rowsContainer);
 
-  // Bottom bar with Apply and Cancel
+  // Bottom bar
   const applyBar = document.createElement('div');
   applyBar.className = 'diff-apply-bar';
 
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'action-btn';
   cancelBtn.textContent = 'Cancel';
-  cancelBtn.addEventListener('click', () => {
-    viewer.remove();
-  });
+  cancelBtn.addEventListener('click', () => { viewer.remove(); });
   applyBar.appendChild(cancelBtn);
 
   const applyInfo = document.createElement('span');
   applyInfo.className = 'text-secondary';
   applyInfo.style.fontSize = '0.82rem';
-  applyInfo.textContent = 'Apply creates a new "Edited" version visible in the Transcript Mapping tabs above';
+  applyInfo.textContent = 'Creates a new "Edited" version in Transcript Mapping tabs';
   applyBar.appendChild(applyInfo);
 
   const applyBtn = document.createElement('button');
   applyBtn.className = 'btn btn-secondary';
-  applyBtn.textContent = 'Apply & Save as Edited Version';
+  applyBtn.textContent = 'Save as Edited Version';
   applyBtn.addEventListener('click', () => {
     const finalLines = rows.map(r => {
       if (!r.changed) return r.orig;

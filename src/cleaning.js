@@ -1,32 +1,51 @@
 import { updateState } from './state.js';
 
+// Individual cleaning passes
+export function cleanBrackets(text) {
+  return text.replace(/\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]/g, '');
+}
+
+export function cleanParentheses(text) {
+  return text.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
+}
+
+export function cleanSectionMarkers(text) {
+  let t = text;
+  t = t.replace(/\u05E1\u05E2\u05D9\u05E3[\s\u05D0-\u05EA\u0590-\u05FF'"\u2018\u2019\u201C\u201D]{0,10}/g, '');
+  t = t.replace(/\*\s*\*\s*\*/g, '');
+  t = t.replace(/^\s*\*+\s*$/gm, '');
+  t = t.replace(/^\s*\d+[.)]\s*/gm, '');
+  return t;
+}
+
+export function cleanSymbols(text) {
+  // Remove punctuation/symbols that aren't part of Hebrew words
+  let t = text;
+  t = t.replace(/[\u200B-\u200F\uFEFF]/g, '');
+  t = t.replace(/[\u2018\u2019]/g, "'");
+  t = t.replace(/[\u201C\u201D]/g, '"');
+  t = t.replace(/[!?;:\-–—…"״]+/g, '');
+  t = t.replace(/\.{2,}/g, '');
+  return t;
+}
+
+export function cleanWhitespace(text) {
+  let t = text;
+  t = t.replace(/\n{3,}/g, '\n\n');
+  t = t.replace(/[ \t]{2,}/g, ' ');
+  t = t.replace(/^ +| +$/gm, '');
+  t = t.trim();
+  return t;
+}
+
 export function cleanText(rawText) {
   if (!rawText) return '';
-
   let text = rawText;
-
-  // Pass 1: Strip [bracketed content] including nested
-  text = text.replace(/\[[^\[\]]*(?:\[[^\[\]]*\][^\[\]]*)*\]/g, '');
-
-  // Pass 2: Strip (parenthetical content)
-  text = text.replace(/\([^()]*(?:\([^()]*\)[^()]*)*\)/g, '');
-
-  // Pass 3: Strip Hebrew section markers, asterisks, numbered headings
-  text = text.replace(/\u05E1\u05E2\u05D9\u05E3[\s\u05D0-\u05EA\u0590-\u05FF'"\u2018\u2019\u201C\u201D]{0,10}/g, '');
-  text = text.replace(/\*\s*\*\s*\*/g, '');
-  text = text.replace(/^\s*\*+\s*$/gm, '');
-  text = text.replace(/^\s*\d+[.)]\s*/gm, '');
-
-  // Pass 4: Strip zero-width chars, smart quotes to regular
-  text = text.replace(/[\u200B-\u200F\uFEFF]/g, '');
-  text = text.replace(/[\u2018\u2019]/g, "'");
-  text = text.replace(/[\u201C\u201D]/g, '"');
-
-  // Pass 5: Collapse multiple spaces/newlines, trim
-  text = text.replace(/\n{3,}/g, '\n\n');
-  text = text.replace(/[ \t]{2,}/g, ' ');
-  text = text.trim();
-
+  text = cleanBrackets(text);
+  text = cleanParentheses(text);
+  text = cleanSectionMarkers(text);
+  text = cleanSymbols(text);
+  text = cleanWhitespace(text);
   return text;
 }
 

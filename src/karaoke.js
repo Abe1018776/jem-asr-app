@@ -11,10 +11,17 @@ export function renderKaraokePlayer(audioId, state) {
     if (withAlignment) alignment = withAlignment.alignment;
   }
   if (!alignment) alignment = state.alignments[audioId];
-  if (!entry || !alignment || !alignment.words) return;
+  if (!entry || !alignment || !alignment.words || alignment.words.length === 0) {
+    alert('No word-level alignment data available. Run alignment first.');
+    return;
+  }
 
-  const audioUrl = entry.r2Link || entry.driveLink;
+  let audioUrl = entry.r2Link || entry.driveLink;
   if (!audioUrl) return;
+  // Proxy R2 audio to avoid CORS issues
+  if (audioUrl.includes('audio.kohnai.ai')) {
+    audioUrl = `/api/audio?url=${encodeURIComponent(audioUrl)}`;
+  }
 
   const words = alignment.words;
 

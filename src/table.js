@@ -61,7 +61,6 @@ const COLUMNS = [
   { key: 'rowNum',      label: '#',              sortable: false, showWhen: () => true },
   { key: 'name',        label: 'Audio Name',     sortable: true,  showWhen: () => true },
   { key: 'year',        label: 'Year',           sortable: true,  showWhen: () => true },
-  { key: 'estMinutes',  label: 'Est Duration',   sortable: true,  showWhen: () => true },
   { key: 'firstLine',   label: 'First 15 Words', sortable: false, showWhen: (f) => f !== 'unmapped' },
   { key: 'transcript',  label: 'Transcript Name',sortable: true,  showWhen: (f) => f !== 'unmapped' },
   { key: 'status',      label: 'Status',         sortable: true,  showWhen: () => true },
