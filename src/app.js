@@ -1,6 +1,6 @@
 import { initState, getState, getStatus, getFilteredRows, exportState, importState } from './state.js';
 import { renderTable, updateTable, getSelectedRows } from './table.js';
-import { renderSuggestedMatches, linkMatch, renderSearchModal } from './mapping.js';
+import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
 import { batchAlign } from './alignment.js';
 import { renderReviewPanel, approveAll } from './review.js';
@@ -335,6 +335,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
         panel.appendChild(karaokeBtn);
       }
+    }
+
+    // ── Mapping controls (available on ALL non-benchmark rows) ──
+    if (!audio.isBenchmark) {
+      const mappingBar = document.createElement('div');
+      mappingBar.className = 'mapping-bar';
+      mappingBar.style.cssText = 'display:flex;gap:8px;align-items:center;padding:12px 0;border-top:1px solid var(--border);margin-top:12px;flex-wrap:wrap;';
+
+      const currentMapping = state.mappings[audioId];
+      if (currentMapping) {
+        const transcript = state.transcripts.find(t => t.id === currentMapping.transcriptId);
+        const label = document.createElement('span');
+        label.className = 'text-secondary';
+        label.style.fontSize = '0.85rem';
+        label.textContent = `Linked to: ${transcript ? transcript.name : currentMapping.transcriptId}`;
+        mappingBar.appendChild(label);
+
+        const unlinkBtn = document.createElement('button');
+        unlinkBtn.className = 'action-btn action-btn-danger';
+        unlinkBtn.textContent = 'Unlink';
+        unlinkBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          unlinkMatch(audioId);
+          // Also clear downstream data
+          if (state.cleaning[audioId]) delete state.cleaning[audioId];
+          if (state.alignments[audioId]) delete state.alignments[audioId];
+          if (state.reviews[audioId]) delete state.reviews[audioId];
+          updateTable();
+          onRowExpand(audioId);
+        });
+        mappingBar.appendChild(unlinkBtn);
+      }
+
+      const changeBtn = document.createElement('button');
+      changeBtn.className = 'action-btn action-btn-primary';
+      changeBtn.textContent = currentMapping ? 'Change Transcript' : 'Link Transcript';
+      changeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        renderSearchModal(document.body, getState(), (transcriptId) => {
+          linkMatch(audioId, transcriptId, 1.0, 'manual search');
+          // Clear downstream data when re-mapping
+          if (state.cleaning[audioId]) delete state.cleaning[audioId];
+          if (state.alignments[audioId]) delete state.alignments[audioId];
+          if (state.reviews[audioId]) delete state.reviews[audioId];
+          updateTable();
+          onRowExpand(audioId);
+        });
+      });
+      mappingBar.appendChild(changeBtn);
+
+      panel.appendChild(mappingBar);
     }
 
     // Insert panel after the clicked row, wrapped in a <tr><td> for valid HTML
