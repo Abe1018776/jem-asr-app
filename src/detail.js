@@ -54,7 +54,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     transcriptMap.set(t.name, id);
     t.id = id;
     t.driveLink = t.link;
-    t.r2TranscriptLink = `${R2_BASE}/transcripts/${encodeURIComponent(t.name)}`;
+    const txtName = t.name.replace(/\.(doc|docx|pdf|rtf|txt)$/i, '.txt');
+    t.r2TranscriptLink = `${R2_BASE}/transcripts-txt/${encodeURIComponent(txtName)}`;
     if (!t.firstLine && firstLines[t.name]) t.firstLine = firstLines[t.name];
   });
 
