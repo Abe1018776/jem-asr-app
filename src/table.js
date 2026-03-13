@@ -1,6 +1,45 @@
 import { getState, getFilteredRows, getFilterCounts, getStatus } from './state.js';
 import { truncateWords, formatConfidence, debounce } from './utils.js';
 
+// ── Inline audio player ─────────────────────────────────────────────
+let _activeInlinePlayer = null;
+
+function stopInlinePlayer() {
+  if (_activeInlinePlayer) {
+    _activeInlinePlayer.audio.pause();
+    _activeInlinePlayer.audio.src = '';
+    _activeInlinePlayer.btn.textContent = '\u25B6';
+    _activeInlinePlayer.btn.classList.remove('playing');
+    _activeInlinePlayer = null;
+  }
+}
+
+function toggleInlinePlay(btn, audioUrl, audioId) {
+  if (_activeInlinePlayer && _activeInlinePlayer.id === audioId) {
+    if (_activeInlinePlayer.audio.paused) {
+      _activeInlinePlayer.audio.play();
+      btn.textContent = '\u25A0';
+      btn.classList.add('playing');
+    } else {
+      _activeInlinePlayer.audio.pause();
+      btn.textContent = '\u25B6';
+      btn.classList.remove('playing');
+    }
+    return;
+  }
+  stopInlinePlayer();
+  const audio = new Audio(audioUrl);
+  audio.play();
+  btn.textContent = '\u25A0';
+  btn.classList.add('playing');
+  audio.addEventListener('ended', () => {
+    btn.textContent = '\u25B6';
+    btn.classList.remove('playing');
+    _activeInlinePlayer = null;
+  });
+  _activeInlinePlayer = { audio, btn, id: audioId };
+}
+
 // ── Internal state ──────────────────────────────────────────────────
 let currentFilter = 'fifty';
 let currentSort = { column: null, dir: 'asc' };
@@ -283,6 +322,22 @@ function buildTable(rows) {
           break;
         }
         case 'actions': {
+          // Play button
+          const state = getState();
+          const audioEntry = state.audio.find(a => a.id === row.id);
+          const playUrl = audioEntry?.r2Link || audioEntry?.driveLink;
+          if (playUrl) {
+            const playBtn = document.createElement('button');
+            playBtn.className = 'action-btn row-play-btn';
+            playBtn.textContent = '\u25B6';
+            playBtn.title = 'Play';
+            playBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              toggleInlinePlay(playBtn, playUrl, row.id);
+            });
+            td.appendChild(playBtn);
+          }
+          // Open button
           const btn = document.createElement('button');
           btn.className = 'action-btn action-btn-primary';
           btn.textContent = 'Open';

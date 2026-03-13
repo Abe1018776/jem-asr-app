@@ -1824,61 +1824,181 @@ input {
   border-radius: var(--radius);
 }
 
+.trim-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
 .trim-slider {
-  padding: 8px 0;
+  padding: 16px 0;
 }
 
 .trim-track {
   position: relative;
-  height: 8px;
+  height: 6px;
   background: var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: pointer;
+  /* Larger click area via padding */
+  padding: 10px 0;
+  margin: -10px 0;
+  background-clip: content-box;
 }
 
 .trim-range {
   position: absolute;
-  top: 0;
-  height: 100%;
-  background: var(--accent-dim);
-  border-radius: 4px;
+  top: 10px;
+  height: 6px;
+  background: var(--accent);
+  opacity: 0.35;
+  border-radius: 3px;
   pointer-events: none;
+}
+
+.trim-playhead {
+  position: absolute;
+  top: 4px;
+  width: 2px;
+  height: 18px;
+  background: var(--text);
+  opacity: 0.6;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 1;
+  transition: left 0.1s linear;
 }
 
 .trim-handle {
   position: absolute;
   top: 50%;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   background: var(--accent);
   border: 2px solid var(--surface);
   border-radius: 50%;
   transform: translate(-50%, -50%);
   cursor: grab;
-  z-index: 2;
+  z-index: 3;
   transition: box-shadow 0.15s ease;
+  /* Larger touch target */
+  box-shadow: 0 0 0 4px transparent;
+}
+
+.trim-handle::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
 }
 
 .trim-handle:hover {
   box-shadow: 0 0 0 4px var(--accent-dim);
+  transform: translate(-50%, -50%) scale(1.15);
 }
 
 .trim-handle:active {
   cursor: grabbing;
   box-shadow: 0 0 0 6px var(--accent-dim);
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
-.trim-time-display {
-  margin-top: 8px;
+.trim-time-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.trim-time-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trim-input-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.trim-time-input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  font-family: inherit;
+}
+
+.trim-time-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.trim-duration-info {
   font-size: 0.8rem;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
 }
 
 .trim-btn-row {
   display: flex;
   gap: 8px;
   margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+/* === Inline Play Button === */
+.row-play-btn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 30px;
+  text-align: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.row-play-btn.playing {
+  background: var(--accent);
+  color: white;
+}
+
+/* === Editable Title === */
+.editable-title {
+  outline: none;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.15s;
+  padding-bottom: 2px;
+}
+
+.editable-title:hover {
+  border-bottom-color: var(--border);
+}
+
+.editable-title:focus {
+  border-bottom-color: var(--accent);
+}
+
+/* === Transcript Link === */
+.transcript-audio-link {
+  display: block;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 4px 0;
+}
+
+.transcript-audio-link:hover {
+  text-decoration: underline;
 }
 
 /* === Cleaning Diff Viewer === */

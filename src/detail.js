@@ -11,10 +11,11 @@ const R2_BASE = 'https://audio.kohnai.ai';
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const audioId = params.get('id');
+  const transcriptId = params.get('tid');
   const page = document.getElementById('detail-page');
 
-  if (!audioId) {
-    page.innerHTML = '<div class="empty-state"><div class="empty-state-title">No audio ID specified</div></div>';
+  if (!audioId && !transcriptId) {
+    page.innerHTML = '<div class="empty-state"><div class="empty-state-title">No audio or transcript ID specified</div></div>';
     return;
   }
 
@@ -101,6 +102,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Standalone transcript view
+  if (transcriptId && !audioId) {
+    const transcript = state.transcripts.find(t => t.id === transcriptId);
+    if (!transcript) {
+      page.innerHTML = '<div class="empty-state"><div class="empty-state-title">Transcript not found</div></div>';
+      return;
+    }
+    renderTranscriptPage(transcriptId, transcript, state, page);
+    return;
+  }
+
   // Find the audio entry
   const audio = state.audio.find(a => a.id === audioId);
   if (!audio) {
@@ -111,15 +123,121 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDetailPage(audioId, audio, state, page);
 });
 
+function renderTranscriptPage(transcriptId, transcript, state, container) {
+  container.innerHTML = '';
+
+  // Title
+  const titleBar = document.createElement('div');
+  titleBar.className = 'detail-title-bar';
+  const title = document.createElement('h2');
+  title.className = 'editable-title';
+  title.contentEditable = 'true';
+  title.spellcheck = false;
+  title.textContent = transcript.name;
+  title.addEventListener('blur', () => {
+    const newName = title.textContent.trim();
+    if (newName && newName !== transcript.name) transcript.name = newName;
+  });
+  title.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); title.blur(); }
+  });
+  titleBar.appendChild(title);
+  container.appendChild(titleBar);
+
+  // Meta
+  const meta = document.createElement('div');
+  meta.className = 'detail-meta';
+  const items = [
+    transcript.year && `Year: ${transcript.year}`,
+    transcript.month && `Month: ${transcript.month}`,
+  ].filter(Boolean);
+  meta.textContent = items.length > 0 ? items.join('  |  ') : 'Transcript file';
+  container.appendChild(meta);
+
+  // Linked audio
+  const linkedAudioIds = Object.entries(state.mappings)
+    .filter(([, m]) => m.transcriptId === transcriptId)
+    .map(([aId]) => aId);
+
+  if (linkedAudioIds.length > 0) {
+    const linkedSection = createSection('Linked Audio');
+    linkedAudioIds.forEach(aId => {
+      const a = state.audio.find(x => x.id === aId);
+      if (!a) return;
+      const link = document.createElement('a');
+      link.href = `/detail.html?id=${encodeURIComponent(aId)}`;
+      link.target = '_blank';
+      link.className = 'transcript-audio-link';
+      link.textContent = a.name;
+      linkedSection.content.appendChild(link);
+    });
+    container.appendChild(linkedSection.el);
+  }
+
+  // Editable transcript text
+  const textSection = createSection('Transcript Text');
+  const textarea = document.createElement('textarea');
+  textarea.className = 'transcript-editor';
+  textarea.dir = 'rtl';
+  textarea.rows = 20;
+  textarea.placeholder = 'Loading transcript text...';
+
+  if (transcript.text) {
+    textarea.value = transcript.text;
+  } else if (transcript.firstLine) {
+    textarea.value = transcript.firstLine;
+  }
+
+  // Load full text from R2
+  if (transcript.r2TranscriptLink && !transcript.text) {
+    fetch(transcript.r2TranscriptLink).then(r => r.ok ? r.text() : null).then(text => {
+      if (text) {
+        transcript.text = text;
+        textarea.value = text;
+      }
+    }).catch(() => {});
+  }
+
+  const saveStatus = document.createElement('span');
+  saveStatus.className = 'save-status text-secondary';
+  let saveTimer = null;
+  textarea.addEventListener('input', () => {
+    saveStatus.textContent = 'Unsaved...';
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      transcript.text = textarea.value;
+      saveStatus.textContent = 'Saved locally';
+      setTimeout(() => { saveStatus.textContent = ''; }, 2000);
+    }, 800);
+  });
+
+  textSection.content.appendChild(textarea);
+  textSection.content.appendChild(saveStatus);
+  container.appendChild(textSection.el);
+}
+
 function renderDetailPage(audioId, audio, state, container) {
   container.innerHTML = '';
   const status = getStatus(audioId);
 
-  // Title bar
+  // Title bar with editable name
   const titleBar = document.createElement('div');
   titleBar.className = 'detail-title-bar';
   const title = document.createElement('h2');
+  title.className = 'editable-title';
+  title.contentEditable = 'true';
+  title.spellcheck = false;
   title.textContent = audio.name;
+  title.addEventListener('blur', () => {
+    const newName = title.textContent.trim();
+    if (newName && newName !== audio.name) {
+      audio.name = newName;
+      updateState('renamedFiles', audioId, newName);
+    }
+  });
+  title.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); title.blur(); }
+  });
   titleBar.appendChild(title);
   const badge = document.createElement('span');
   badge.className = `status-badge status-${status}`;
@@ -146,7 +264,7 @@ function renderDetailPage(audioId, audio, state, container) {
   if (audioUrl) {
     const playerEl = document.createElement('audio');
     playerEl.controls = true;
-    playerEl.preload = 'none';
+    playerEl.preload = 'metadata';
     playerEl.src = audioUrl;
     playerEl.className = 'audio-player';
     playerSection.content.appendChild(playerEl);
@@ -231,13 +349,22 @@ function renderMappingSection(audioId, state, container, pageContainer) {
       ? state.transcripts.find(t => t.id === manual.sourceTranscriptId)
       : (mapping ? state.transcripts.find(t => t.id === mapping.transcriptId) : null);
 
-    // Header: linked transcript name
+    // Header: linked transcript name + view link
     const label = document.createElement('div');
-    label.style.cssText = 'margin-bottom:8px;';
+    label.style.cssText = 'margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
     const strong = document.createElement('strong');
     strong.textContent = 'Linked to: ';
     label.appendChild(strong);
     label.appendChild(document.createTextNode(transcript ? transcript.name : (mapping?.transcriptId || 'unknown')));
+    if (transcript) {
+      const viewLink = document.createElement('a');
+      viewLink.href = `/detail.html?tid=${encodeURIComponent(transcript.id)}`;
+      viewLink.target = '_blank';
+      viewLink.className = 'action-btn';
+      viewLink.style.cssText = 'text-decoration:none;font-size:0.8rem;';
+      viewLink.textContent = 'View Transcript Independently';
+      label.appendChild(viewLink);
+    }
     container.appendChild(label);
 
     // Version tabs
@@ -442,6 +569,34 @@ function renderMappingSection(audioId, state, container, pageContainer) {
       });
     });
     container.appendChild(searchBtn);
+
+    // Create transcript from scratch
+    const createBtn = document.createElement('button');
+    createBtn.className = 'btn btn-secondary';
+    createBtn.textContent = 'Create Transcript from Scratch';
+    createBtn.style.marginTop = '8px';
+    createBtn.addEventListener('click', () => {
+      // Create a new manual version with empty text
+      addVersion(audioId, {
+        type: 'manual',
+        text: '',
+        createdBy: 'user',
+      });
+      const s = getState();
+      // Create a synthetic mapping so the pipeline can proceed
+      if (!s.mappings[audioId]) {
+        s.mappings[audioId] = {
+          transcriptId: null,
+          confidence: 1.0,
+          matchReason: 'created-from-scratch',
+          confirmedBy: 'user',
+          confirmedAt: new Date().toISOString(),
+        };
+      }
+      const audio = s.audio.find(a => a.id === audioId);
+      renderDetailPage(audioId, audio, s, pageContainer);
+    });
+    container.appendChild(createBtn);
   }
 }
 
@@ -549,10 +704,18 @@ function renderTrimControls(audioId, playerEl, container) {
   let trimEnd = saved.end || 0;
   let duration = 0;
   let trimEndTimerId = null;
+  let isDragging = false;
 
   const wrap = document.createElement('div');
   wrap.className = 'trim-controls';
 
+  // Label
+  const label = document.createElement('div');
+  label.className = 'trim-label';
+  label.textContent = 'Audio Range Selection';
+  wrap.appendChild(label);
+
+  // Slider area — taller hit zone
   const slider = document.createElement('div');
   slider.className = 'trim-slider';
 
@@ -562,34 +725,78 @@ function renderTrimControls(audioId, playerEl, container) {
   const range = document.createElement('div');
   range.className = 'trim-range';
 
+  // Playhead indicator
+  const playhead = document.createElement('div');
+  playhead.className = 'trim-playhead';
+
   const handleStart = document.createElement('div');
   handleStart.className = 'trim-handle trim-handle-start';
-  handleStart.title = 'Drag to set start trim';
+  handleStart.title = 'Drag to set start';
 
   const handleEnd = document.createElement('div');
   handleEnd.className = 'trim-handle trim-handle-end';
-  handleEnd.title = 'Drag to set end trim';
+  handleEnd.title = 'Drag to set end';
 
   track.appendChild(range);
+  track.appendChild(playhead);
   track.appendChild(handleStart);
   track.appendChild(handleEnd);
   slider.appendChild(track);
   wrap.appendChild(slider);
 
-  const timeDisplay = document.createElement('div');
-  timeDisplay.className = 'trim-time-display';
-  wrap.appendChild(timeDisplay);
+  // Time inputs row
+  const timeRow = document.createElement('div');
+  timeRow.className = 'trim-time-row';
 
+  const startGroup = document.createElement('div');
+  startGroup.className = 'trim-time-group';
+  const startLabel = document.createElement('label');
+  startLabel.textContent = 'Start';
+  startLabel.className = 'trim-input-label';
+  const startInput = document.createElement('input');
+  startInput.type = 'text';
+  startInput.className = 'trim-time-input';
+  startInput.value = formatTime(trimStart);
+  startInput.title = 'mm:ss';
+  startGroup.appendChild(startLabel);
+  startGroup.appendChild(startInput);
+
+  const endGroup = document.createElement('div');
+  endGroup.className = 'trim-time-group';
+  const endLabel = document.createElement('label');
+  endLabel.textContent = 'End';
+  endLabel.className = 'trim-input-label';
+  const endInput = document.createElement('input');
+  endInput.type = 'text';
+  endInput.className = 'trim-time-input';
+  endInput.value = formatTime(trimEnd || 0);
+  endInput.title = 'mm:ss';
+  endGroup.appendChild(endLabel);
+  endGroup.appendChild(endInput);
+
+  const durationInfo = document.createElement('span');
+  durationInfo.className = 'trim-duration-info';
+
+  timeRow.appendChild(startGroup);
+  timeRow.appendChild(endGroup);
+  timeRow.appendChild(durationInfo);
+  wrap.appendChild(timeRow);
+
+  // Buttons
   const btnRow = document.createElement('div');
   btnRow.className = 'trim-btn-row';
 
   const setStartBtn = document.createElement('button');
   setStartBtn.className = 'action-btn';
-  setStartBtn.textContent = 'Set Start';
+  setStartBtn.textContent = 'Set Start to Playhead';
 
   const setEndBtn = document.createElement('button');
   setEndBtn.className = 'action-btn';
-  setEndBtn.textContent = 'Set End';
+  setEndBtn.textContent = 'Set End to Playhead';
+
+  const previewBtn = document.createElement('button');
+  previewBtn.className = 'action-btn action-btn-primary';
+  previewBtn.textContent = 'Preview Trimmed';
 
   const resetBtn = document.createElement('button');
   resetBtn.className = 'action-btn action-btn-danger';
@@ -597,9 +804,21 @@ function renderTrimControls(audioId, playerEl, container) {
 
   btnRow.appendChild(setStartBtn);
   btnRow.appendChild(setEndBtn);
+  btnRow.appendChild(previewBtn);
   btnRow.appendChild(resetBtn);
   wrap.appendChild(btnRow);
   container.appendChild(wrap);
+
+  function parseTimeInput(str) {
+    const parts = str.trim().split(':');
+    if (parts.length === 2) {
+      const m = parseInt(parts[0], 10);
+      const s = parseInt(parts[1], 10);
+      if (!isNaN(m) && !isNaN(s)) return m * 60 + s;
+    }
+    const n = parseFloat(str);
+    return isNaN(n) ? null : n;
+  }
 
   function getEffectiveEnd() {
     return trimEnd > 0 ? trimEnd : duration;
@@ -608,10 +827,10 @@ function renderTrimControls(audioId, playerEl, container) {
   function updateDisplay() {
     const effEnd = getEffectiveEnd();
     const trimDuration = Math.max(0, effEnd - trimStart);
-    timeDisplay.textContent = 'Start: ' + formatTime(trimStart) +
-      '  |  End: ' + formatTime(effEnd) +
-      '  |  Duration: ' + formatTime(trimDuration) +
-      (duration > 0 ? '  (of ' + formatTime(duration) + ')' : '');
+    startInput.value = formatTime(trimStart);
+    endInput.value = formatTime(effEnd);
+    durationInfo.textContent = 'Selected: ' + formatTime(trimDuration) +
+      (duration > 0 ? ' of ' + formatTime(duration) : '');
   }
 
   function updateSlider() {
@@ -624,11 +843,38 @@ function renderTrimControls(audioId, playerEl, container) {
     handleEnd.style.left = endPct + '%';
   }
 
+  function updatePlayhead() {
+    if (duration <= 0) return;
+    const pct = (playerEl.currentTime / duration) * 100;
+    playhead.style.left = pct + '%';
+  }
+
   function saveTrim() {
     updateState('trims', audioId, { start: trimStart, end: trimEnd });
     updateDisplay();
     updateSlider();
   }
+
+  // Time input change handlers
+  startInput.addEventListener('change', () => {
+    const val = parseTimeInput(startInput.value);
+    if (val != null && val >= 0) {
+      trimStart = Math.min(val, getEffectiveEnd() - 1);
+      saveTrim();
+    } else {
+      startInput.value = formatTime(trimStart);
+    }
+  });
+
+  endInput.addEventListener('change', () => {
+    const val = parseTimeInput(endInput.value);
+    if (val != null && val > trimStart) {
+      trimEnd = (duration > 0 && val >= duration) ? 0 : val;
+      saveTrim();
+    } else {
+      endInput.value = formatTime(getEffectiveEnd());
+    }
+  });
 
   playerEl.addEventListener('loadedmetadata', () => {
     duration = playerEl.duration;
@@ -645,6 +891,9 @@ function renderTrimControls(audioId, playerEl, container) {
     updateDisplay();
     updateSlider();
   }
+
+  // Playhead tracking
+  playerEl.addEventListener('timeupdate', updatePlayhead);
 
   playerEl.addEventListener('play', () => {
     if (trimStart > 0 && playerEl.currentTime < trimStart) {
@@ -689,15 +938,19 @@ function renderTrimControls(audioId, playerEl, container) {
     saveTrim();
   });
 
+  previewBtn.addEventListener('click', () => {
+    playerEl.currentTime = trimStart;
+    playerEl.play();
+  });
+
   resetBtn.addEventListener('click', () => {
     trimStart = 0;
     trimEnd = 0;
     saveTrim();
   });
 
+  // Draggable handles with proper event isolation
   function makeDraggable(handle, onDrag) {
-    let dragging = false;
-
     function getPos(e) {
       const rect = track.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -708,23 +961,25 @@ function renderTrimControls(audioId, playerEl, container) {
 
     function onStart(e) {
       e.preventDefault();
-      dragging = true;
+      e.stopPropagation();
+      isDragging = true;
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onEnd);
-      document.addEventListener('touchmove', onMove);
+      document.addEventListener('touchmove', onMove, { passive: false });
       document.addEventListener('touchend', onEnd);
     }
 
     function onMove(e) {
-      if (!dragging || duration <= 0) return;
+      if (!isDragging || duration <= 0) return;
+      e.preventDefault();
       onDrag(getPos(e));
       updateDisplay();
       updateSlider();
     }
 
     function onEnd() {
-      if (!dragging) return;
-      dragging = false;
+      if (!isDragging) return;
+      isDragging = false;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onEnd);
       document.removeEventListener('touchmove', onMove);
@@ -733,7 +988,7 @@ function renderTrimControls(audioId, playerEl, container) {
     }
 
     handle.addEventListener('mousedown', onStart);
-    handle.addEventListener('touchstart', onStart);
+    handle.addEventListener('touchstart', onStart, { passive: false });
   }
 
   makeDraggable(handleStart, (pos) => {
@@ -748,8 +1003,11 @@ function renderTrimControls(audioId, playerEl, container) {
     if (trimEnd >= duration) trimEnd = 0;
   });
 
+  // Click on track to seek (only if not dragging)
   track.addEventListener('click', (e) => {
-    if (duration <= 0) return;
+    if (isDragging || duration <= 0) return;
+    // Don't seek if clicking on a handle
+    if (e.target.classList.contains('trim-handle')) return;
     const rect = track.getBoundingClientRect();
     const pct = (e.clientX - rect.left) / rect.width;
     const time = Math.max(0, Math.min(duration, pct * duration));
