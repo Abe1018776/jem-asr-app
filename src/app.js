@@ -8,7 +8,7 @@ import { renderKaraokePlayer } from './karaoke.js';
 import { renderAsrConfig, runBenchmark, renderBenchmarkTable } from './benchmark.js';
 import { exportCSV, debounce, truncateWords } from './utils.js';
 
-const R2_BASE = 'https://pub-c3d984b0acf3415ab61d979b1a4d9665.r2.dev';
+const R2_BASE = 'https://audio.kohnai.ai';
 
 // ── App init ────────────────────────────────────────────────────────
 
@@ -328,11 +328,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Insert panel after the clicked row
-    const rows = tableContainer.querySelectorAll('.table-row');
-    let targetRow = null;
-    rows.forEach(r => {
-      if (r.textContent.includes(audio.name)) targetRow = r;
-    });
+    const targetRow = tableContainer.querySelector(`tr[data-audio-id="${audioId}"]`);
     if (targetRow) {
       targetRow.after(panel);
     } else {

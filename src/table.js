@@ -189,6 +189,7 @@ function buildTable(rows) {
   pageRows.forEach((row, i) => {
     const tr = document.createElement('tr');
     tr.className = 'table-row';
+    tr.setAttribute('data-audio-id', row.id);
     if (row.isBenchmark) tr.classList.add('benchmark-row');
     if (selectedIds.has(row.id)) tr.classList.add('selected');
 
