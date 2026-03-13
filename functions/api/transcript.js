@@ -17,8 +17,8 @@ export async function onRequestGet(context) {
     if (!resp.ok) {
       return new Response('Transcript not found', { status: 404 });
     }
-    const text = await resp.text();
-    return new Response(text, {
+    // Stream raw bytes through to preserve UTF-8 encoding
+    return new Response(resp.body, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
         'Cache-Control': 'no-cache',

@@ -202,19 +202,25 @@ export function getFilteredRows(filter) {
   const { audio } = state;
   const fifty = audio.filter(a => a.isSelected50hr);
 
+  // Only show Sicha/Maamar types
+  const isSichaOrMaamar = (a) => {
+    const name = (a.name || '').toLowerCase();
+    return name.includes('sicha') || name.includes('maamar') || name.includes('mamar');
+  };
+
   switch (filter) {
     case '50hr':
-      return fifty;
+      return fifty.filter(isSichaOrMaamar);
     case '50hr-unmapped':
-      return fifty.filter(a => getStatus(a.id) === 'unmapped');
+      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'unmapped');
     case '50hr-mapped':
-      return fifty.filter(a => getStatus(a.id) === 'mapped');
+      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'mapped');
     case '50hr-cleaned':
-      return fifty.filter(a => getStatus(a.id) === 'cleaned');
+      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'cleaned');
     case '50hr-aligned':
-      return fifty.filter(a => getStatus(a.id) === 'aligned');
+      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'aligned');
     case '50hr-approved':
-      return fifty.filter(a => getStatus(a.id) === 'approved');
+      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'approved');
     case 'unmapped':
       return audio.filter(a => getStatus(a.id) === 'unmapped');
     case 'mapped':
@@ -239,7 +245,11 @@ export function getFilteredRows(filter) {
 export function getFilterCounts() {
   if (!state) return {};
   const { audio } = state;
-  const fifty = audio.filter(a => a.isSelected50hr);
+  const isSichaOrMaamar = (a) => {
+    const name = (a.name || '').toLowerCase();
+    return name.includes('sicha') || name.includes('maamar') || name.includes('mamar');
+  };
+  const fifty = audio.filter(a => a.isSelected50hr && isSichaOrMaamar(a));
   return {
     '50hr': fifty.length,
     '50hr-unmapped': fifty.filter(a => getStatus(a.id) === 'unmapped').length,
