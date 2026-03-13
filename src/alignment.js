@@ -1,6 +1,6 @@
 import { updateState } from './state.js';
 
-const ALIGN_ENDPOINT = 'https://align.kohnai.ai/api/align';
+const ALIGN_ENDPOINT = '/api/align';
 
 function getAudioUrl(audioId, state) {
   const entry = state.audio.find(a => a.id === audioId);
