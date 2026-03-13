@@ -2,7 +2,7 @@ import { getState, getFilteredRows, getFilterCounts, getStatus } from './state.j
 import { truncateWords, formatConfidence, debounce } from './utils.js';
 
 // ── Internal state ──────────────────────────────────────────────────
-let currentFilter = 'all';
+let currentFilter = 'fifty';
 let currentSort = { column: null, dir: 'asc' };
 let currentPage = 1;
 let searchTerm = '';
@@ -36,14 +36,12 @@ const COLUMNS = [
 
 // ── Filter key mapping (HTML data-filter → state.js key) ────────────
 const FILTER_MAP = {
-  all: 'all',
-  unmapped: 'unmapped',
-  mapped: 'mapped',
-  cleaned: 'cleaned',
   fifty: '50hr',
-  benchmark: 'benchmark',
-  review: 'needsReview',
-  approved: 'approved',
+  'fifty-unmapped': '50hr-unmapped',
+  'fifty-mapped': '50hr-mapped',
+  'fifty-cleaned': '50hr-cleaned',
+  'fifty-aligned': '50hr-aligned',
+  'fifty-approved': '50hr-approved',
 };
 
 function stateFilterKey(htmlFilter) {
@@ -431,16 +429,13 @@ function buildPagination(totalRows) {
 
 function updateFilterCounts() {
   const counts = getFilterCounts();
-  // Map: HTML element id → state.js count key
   const map = {
-    'count-all': 'all',
-    'count-unmapped': 'unmapped',
-    'count-mapped': 'mapped',
-    'count-cleaned': 'cleaned',
     'count-fifty': '50hr',
-    'count-benchmark': 'benchmark',
-    'count-review': 'needsReview',
-    'count-approved': 'approved',
+    'count-fifty-unmapped': '50hr-unmapped',
+    'count-fifty-mapped': '50hr-mapped',
+    'count-fifty-cleaned': '50hr-cleaned',
+    'count-fifty-aligned': '50hr-aligned',
+    'count-fifty-approved': '50hr-approved',
   };
   for (const [elId, stateKey] of Object.entries(map)) {
     const el = document.getElementById(elId);

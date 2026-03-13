@@ -45,8 +45,21 @@ export function getStatus(audioId) {
 export function getFilteredRows(filter) {
   if (!state) return [];
   const { audio } = state;
+  const fifty = audio.filter(a => a.isSelected50hr);
 
   switch (filter) {
+    case '50hr':
+      return fifty;
+    case '50hr-unmapped':
+      return fifty.filter(a => getStatus(a.id) === 'unmapped');
+    case '50hr-mapped':
+      return fifty.filter(a => getStatus(a.id) === 'mapped');
+    case '50hr-cleaned':
+      return fifty.filter(a => getStatus(a.id) === 'cleaned');
+    case '50hr-aligned':
+      return fifty.filter(a => getStatus(a.id) === 'aligned');
+    case '50hr-approved':
+      return fifty.filter(a => getStatus(a.id) === 'approved');
     case 'unmapped':
       return audio.filter(a => getStatus(a.id) === 'unmapped');
     case 'mapped':
@@ -56,8 +69,6 @@ export function getFilteredRows(filter) {
       });
     case 'cleaned':
       return audio.filter(a => getStatus(a.id) === 'cleaned');
-    case '50hr':
-      return audio.filter(a => a.isSelected50hr);
     case 'benchmark':
       return audio.filter(a => a.isBenchmark);
     case 'needsReview':
@@ -73,18 +84,14 @@ export function getFilteredRows(filter) {
 export function getFilterCounts() {
   if (!state) return {};
   const { audio } = state;
+  const fifty = audio.filter(a => a.isSelected50hr);
   return {
-    all: audio.length,
-    unmapped: audio.filter(a => getStatus(a.id) === 'unmapped').length,
-    mapped: audio.filter(a => {
-      const s = getStatus(a.id);
-      return (s === 'mapped' || s === 'cleaned' || s === 'aligned') && !a.isBenchmark;
-    }).length,
-    cleaned: audio.filter(a => getStatus(a.id) === 'cleaned').length,
-    '50hr': audio.filter(a => a.isSelected50hr).length,
-    benchmark: audio.filter(a => a.isBenchmark).length,
-    needsReview: audio.filter(a => getStatus(a.id) === 'aligned').length,
-    approved: audio.filter(a => getStatus(a.id) === 'approved').length,
+    '50hr': fifty.length,
+    '50hr-unmapped': fifty.filter(a => getStatus(a.id) === 'unmapped').length,
+    '50hr-mapped': fifty.filter(a => getStatus(a.id) === 'mapped').length,
+    '50hr-cleaned': fifty.filter(a => getStatus(a.id) === 'cleaned').length,
+    '50hr-aligned': fifty.filter(a => getStatus(a.id) === 'aligned').length,
+    '50hr-approved': fifty.filter(a => getStatus(a.id) === 'approved').length,
   };
 }
 
