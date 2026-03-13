@@ -365,10 +365,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ── Bulk actions ────────────────────────────────────────────────
 
-  document.getElementById('btn-clean-selected').addEventListener('click', () => {
+  document.getElementById('btn-clean-selected').addEventListener('click', async () => {
     const selected = getSelectedRows();
     if (selected.length === 0) return;
-    batchClean(selected, getState());
+
+    const bar = document.getElementById('bulk-selection-count');
+    const originalText = bar.textContent;
+
+    await batchClean(selected, getState(), (done, total, elapsed) => {
+      bar.textContent = `Cleaning ${done} / ${total}${elapsed ? ` (${elapsed}s)` : ''}...`;
+    });
+
+    bar.textContent = originalText;
     updateTable();
   });
 

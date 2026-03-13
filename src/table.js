@@ -36,6 +36,7 @@ const FILTER_MAP = {
   all: 'all',
   unmapped: 'unmapped',
   mapped: 'mapped',
+  cleaned: 'cleaned',
   fifty: '50hr',
   benchmark: 'benchmark',
   review: 'needsReview',
@@ -258,6 +259,90 @@ function buildTable(rows) {
   return table;
 }
 
+function buildCardView(rows) {
+  const container = document.createElement('div');
+  container.className = 'card-view';
+
+  const startIdx = (currentPage - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(startIdx, startIdx + PAGE_SIZE);
+
+  pageRows.forEach(row => {
+    const card = document.createElement('div');
+    card.className = 'card-item';
+    if (selectedIds.has(row.id)) card.classList.add('selected');
+
+    const header = document.createElement('div');
+    header.className = 'card-item-header';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'row-checkbox';
+    cb.checked = selectedIds.has(row.id);
+    cb.addEventListener('change', (e) => {
+      e.stopPropagation();
+      if (cb.checked) selectedIds.add(row.id);
+      else selectedIds.delete(row.id);
+      updateTable();
+      _fireRowSelect();
+    });
+
+    const name = document.createElement('span');
+    name.className = 'card-item-name';
+    name.textContent = row.name;
+
+    header.appendChild(cb);
+    header.appendChild(name);
+
+    const meta = document.createElement('div');
+    meta.className = 'card-item-meta';
+    if (row.year) {
+      const yearSpan = document.createElement('span');
+      yearSpan.textContent = row.year;
+      meta.appendChild(yearSpan);
+    }
+    if (row.type) {
+      const typeSpan = document.createElement('span');
+      typeSpan.textContent = row.type;
+      meta.appendChild(typeSpan);
+    }
+    const badge = document.createElement('span');
+    badge.className = `status-badge ${getStatusClass(row.status)}`;
+    badge.textContent = row.status;
+    meta.appendChild(badge);
+
+    card.appendChild(header);
+    card.appendChild(meta);
+
+    if (row.firstLine) {
+      const preview = document.createElement('div');
+      preview.className = 'card-item-preview';
+      preview.dir = 'rtl';
+      preview.textContent = row.firstLine;
+      card.appendChild(preview);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'card-item-actions';
+    const viewBtn = document.createElement('button');
+    viewBtn.className = 'action-btn';
+    viewBtn.textContent = 'View';
+    viewBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (_onRowExpand) _onRowExpand(row.id);
+    });
+    actions.appendChild(viewBtn);
+    card.appendChild(actions);
+
+    card.addEventListener('click', () => {
+      if (_onRowExpand) _onRowExpand(row.id);
+    });
+
+    container.appendChild(card);
+  });
+
+  return container;
+}
+
 function buildPagination(totalRows) {
   const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
   if (currentPage > totalPages) currentPage = totalPages;
@@ -298,6 +383,7 @@ function updateFilterCounts() {
     'count-all': 'all',
     'count-unmapped': 'unmapped',
     'count-mapped': 'mapped',
+    'count-cleaned': 'cleaned',
     'count-fifty': '50hr',
     'count-benchmark': 'benchmark',
     'count-review': 'needsReview',
@@ -390,6 +476,10 @@ function updateTable() {
   // Build and append table
   const table = buildTable(rows);
   _container.appendChild(table);
+
+  // Build and append card view (visible on mobile ≤480px via CSS)
+  const cardView = buildCardView(rows);
+  _container.appendChild(cardView);
 
   // Build and append pagination
   const pagination = buildPagination(rows.length);

@@ -52,8 +52,10 @@ export function getFilteredRows(filter) {
     case 'mapped':
       return audio.filter(a => {
         const s = getStatus(a.id);
-        return s === 'mapped' || s === 'cleaned' || s === 'aligned';
+        return (s === 'mapped' || s === 'cleaned' || s === 'aligned') && !a.isBenchmark;
       });
+    case 'cleaned':
+      return audio.filter(a => getStatus(a.id) === 'cleaned');
     case '50hr':
       return audio.filter(a => a.isSelected50hr);
     case 'benchmark':
@@ -76,8 +78,9 @@ export function getFilterCounts() {
     unmapped: audio.filter(a => getStatus(a.id) === 'unmapped').length,
     mapped: audio.filter(a => {
       const s = getStatus(a.id);
-      return s === 'mapped' || s === 'cleaned' || s === 'aligned';
+      return (s === 'mapped' || s === 'cleaned' || s === 'aligned') && !a.isBenchmark;
     }).length,
+    cleaned: audio.filter(a => getStatus(a.id) === 'cleaned').length,
     '50hr': audio.filter(a => a.isSelected50hr).length,
     benchmark: audio.filter(a => a.isBenchmark).length,
     needsReview: audio.filter(a => getStatus(a.id) === 'aligned').length,

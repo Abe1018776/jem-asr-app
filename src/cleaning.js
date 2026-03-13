@@ -38,16 +38,37 @@ export function calculateCleanRate(rawText, cleanedText) {
   return Math.round((cleanedWords.length / rawWords.length) * 100);
 }
 
-export function batchClean(audioIds, state) {
-  for (const audioId of audioIds) {
+async function fetchTranscriptText(transcript) {
+  if (transcript.text) return transcript.text;
+  if (!transcript.r2TranscriptLink) return transcript.firstLine || '';
+  try {
+    const resp = await fetch(transcript.r2TranscriptLink);
+    if (!resp.ok) return transcript.firstLine || '';
+    const text = await resp.text();
+    if (text && text.trim()) {
+      transcript.text = text;
+      return text;
+    }
+  } catch {
+    // CORS or network error — fall back to firstLine
+  }
+  return transcript.firstLine || '';
+}
+
+export async function batchClean(audioIds, state, onProgress) {
+  const total = audioIds.length;
+  const startTime = Date.now();
+
+  for (let i = 0; i < total; i++) {
+    const audioId = audioIds[i];
     const mapping = state.mappings[audioId];
-    if (!mapping) continue;
+    if (!mapping) { if (onProgress) onProgress(i + 1, total); continue; }
 
     const transcript = state.transcripts.find(t => t.id === mapping.transcriptId);
-    if (!transcript) continue;
+    if (!transcript) { if (onProgress) onProgress(i + 1, total); continue; }
 
-    const rawText = transcript.text || transcript.firstLine || '';
-    if (!rawText) continue;
+    const rawText = await fetchTranscriptText(transcript);
+    if (!rawText) { if (onProgress) onProgress(i + 1, total); continue; }
 
     const cleanedText = cleanText(rawText);
     const cleanRate = calculateCleanRate(rawText, cleanedText);
@@ -58,5 +79,10 @@ export function batchClean(audioIds, state) {
       cleanRate,
       cleanedAt: new Date().toISOString(),
     });
+
+    if (onProgress) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      onProgress(i + 1, total, elapsed);
+    }
   }
 }
