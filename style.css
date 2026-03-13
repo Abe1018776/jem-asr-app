@@ -398,15 +398,30 @@ input {
   font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', 'Times New Roman', serif;
 }
 
-.word-chip.confidence-high-bg:hover {
+.word-chip.confidence-high {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+.word-chip.confidence-mid {
+  background: var(--orange-dim);
+  color: var(--orange);
+}
+
+.word-chip.confidence-low {
+  background: var(--red-dim);
+  color: var(--red);
+}
+
+.word-chip.confidence-high:hover {
   background: rgba(74, 222, 128, 0.3);
 }
 
-.word-chip.confidence-mid-bg:hover {
+.word-chip.confidence-mid:hover {
   background: rgba(251, 146, 60, 0.3);
 }
 
-.word-chip.confidence-low-bg:hover {
+.word-chip.confidence-low:hover {
   background: rgba(248, 113, 113, 0.3);
 }
 
