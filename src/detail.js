@@ -1,4 +1,4 @@
-import { initState, getState, getStatus, getVersions, getBestVersion, addVersion, updateVersion, exportState, importState } from './state.js';
+import { initState, getState, getStatus, getVersions, getBestVersion, addVersion, updateVersion, updateState, exportState, importState } from './state.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
 import { alignRow } from './alignment.js';
@@ -150,6 +150,9 @@ function renderDetailPage(audioId, audio, state, container) {
     playerEl.src = audioUrl;
     playerEl.className = 'audio-player';
     playerSection.content.appendChild(playerEl);
+
+    // Trim Controls
+    renderTrimControls(audioId, playerEl, playerSection.content);
   } else {
     const noAudio = document.createElement('div');
     noAudio.className = 'no-audio';
@@ -464,6 +467,9 @@ function renderCleanSection(audioId, state, container, pageContainer) {
       renderDetailPage(audioId, audio, s, pageContainer);
     });
     container.appendChild(reCleanBtn);
+
+    // Row-by-row diff viewer
+    renderCleaningDiffViewer(audioId, cleaning, container, pageContainer);
   } else {
     const cleanBtn = document.createElement('button');
     cleanBtn.className = 'btn btn-secondary';
@@ -526,4 +532,371 @@ function renderAlignSection(audioId, state, container, pageContainer) {
     });
     container.appendChild(alignBtn);
   }
+}
+
+function formatTime(seconds) {
+  if (seconds == null || isNaN(seconds)) return '0:00';
+  const s = Math.round(seconds);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ':' + String(sec).padStart(2, '0');
+}
+
+function renderTrimControls(audioId, playerEl, container) {
+  const state = getState();
+  const saved = state.trims?.[audioId] || {};
+  let trimStart = saved.start || 0;
+  let trimEnd = saved.end || 0;
+  let duration = 0;
+  let trimEndTimerId = null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'trim-controls';
+
+  const slider = document.createElement('div');
+  slider.className = 'trim-slider';
+
+  const track = document.createElement('div');
+  track.className = 'trim-track';
+
+  const range = document.createElement('div');
+  range.className = 'trim-range';
+
+  const handleStart = document.createElement('div');
+  handleStart.className = 'trim-handle trim-handle-start';
+  handleStart.title = 'Drag to set start trim';
+
+  const handleEnd = document.createElement('div');
+  handleEnd.className = 'trim-handle trim-handle-end';
+  handleEnd.title = 'Drag to set end trim';
+
+  track.appendChild(range);
+  track.appendChild(handleStart);
+  track.appendChild(handleEnd);
+  slider.appendChild(track);
+  wrap.appendChild(slider);
+
+  const timeDisplay = document.createElement('div');
+  timeDisplay.className = 'trim-time-display';
+  wrap.appendChild(timeDisplay);
+
+  const btnRow = document.createElement('div');
+  btnRow.className = 'trim-btn-row';
+
+  const setStartBtn = document.createElement('button');
+  setStartBtn.className = 'action-btn';
+  setStartBtn.textContent = 'Set Start';
+
+  const setEndBtn = document.createElement('button');
+  setEndBtn.className = 'action-btn';
+  setEndBtn.textContent = 'Set End';
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'action-btn action-btn-danger';
+  resetBtn.textContent = 'Reset';
+
+  btnRow.appendChild(setStartBtn);
+  btnRow.appendChild(setEndBtn);
+  btnRow.appendChild(resetBtn);
+  wrap.appendChild(btnRow);
+  container.appendChild(wrap);
+
+  function getEffectiveEnd() {
+    return trimEnd > 0 ? trimEnd : duration;
+  }
+
+  function updateDisplay() {
+    const effEnd = getEffectiveEnd();
+    const trimDuration = Math.max(0, effEnd - trimStart);
+    timeDisplay.textContent = 'Start: ' + formatTime(trimStart) +
+      '  |  End: ' + formatTime(effEnd) +
+      '  |  Duration: ' + formatTime(trimDuration) +
+      (duration > 0 ? '  (of ' + formatTime(duration) + ')' : '');
+  }
+
+  function updateSlider() {
+    if (duration <= 0) return;
+    const startPct = (trimStart / duration) * 100;
+    const endPct = ((trimEnd > 0 ? trimEnd : duration) / duration) * 100;
+    range.style.left = startPct + '%';
+    range.style.width = (endPct - startPct) + '%';
+    handleStart.style.left = startPct + '%';
+    handleEnd.style.left = endPct + '%';
+  }
+
+  function saveTrim() {
+    updateState('trims', audioId, { start: trimStart, end: trimEnd });
+    updateDisplay();
+    updateSlider();
+  }
+
+  playerEl.addEventListener('loadedmetadata', () => {
+    duration = playerEl.duration;
+    if (trimStart > duration) trimStart = 0;
+    if (trimEnd > duration) trimEnd = 0;
+    updateDisplay();
+    updateSlider();
+  });
+
+  if (playerEl.duration && isFinite(playerEl.duration)) {
+    duration = playerEl.duration;
+    if (trimStart > duration) trimStart = 0;
+    if (trimEnd > duration) trimEnd = 0;
+    updateDisplay();
+    updateSlider();
+  }
+
+  playerEl.addEventListener('play', () => {
+    if (trimStart > 0 && playerEl.currentTime < trimStart) {
+      playerEl.currentTime = trimStart;
+    }
+    startTrimEndCheck();
+  });
+
+  playerEl.addEventListener('pause', () => stopTrimEndCheck());
+  playerEl.addEventListener('ended', () => stopTrimEndCheck());
+
+  function startTrimEndCheck() {
+    stopTrimEndCheck();
+    const effEnd = getEffectiveEnd();
+    if (effEnd <= 0 || effEnd >= duration) return;
+    trimEndTimerId = setInterval(() => {
+      if (playerEl.currentTime >= effEnd) {
+        playerEl.pause();
+        playerEl.currentTime = effEnd;
+        stopTrimEndCheck();
+      }
+    }, 100);
+  }
+
+  function stopTrimEndCheck() {
+    if (trimEndTimerId) {
+      clearInterval(trimEndTimerId);
+      trimEndTimerId = null;
+    }
+  }
+
+  setStartBtn.addEventListener('click', () => {
+    trimStart = Math.max(0, playerEl.currentTime);
+    if (trimEnd > 0 && trimStart >= trimEnd) trimStart = Math.max(0, trimEnd - 1);
+    saveTrim();
+  });
+
+  setEndBtn.addEventListener('click', () => {
+    trimEnd = Math.min(duration || Infinity, playerEl.currentTime);
+    if (trimEnd <= trimStart) trimEnd = trimStart + 1;
+    if (trimEnd >= duration) trimEnd = 0;
+    saveTrim();
+  });
+
+  resetBtn.addEventListener('click', () => {
+    trimStart = 0;
+    trimEnd = 0;
+    saveTrim();
+  });
+
+  function makeDraggable(handle, onDrag) {
+    let dragging = false;
+
+    function getPos(e) {
+      const rect = track.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      let pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      return pct * duration;
+    }
+
+    function onStart(e) {
+      e.preventDefault();
+      dragging = true;
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+      document.addEventListener('touchmove', onMove);
+      document.addEventListener('touchend', onEnd);
+    }
+
+    function onMove(e) {
+      if (!dragging || duration <= 0) return;
+      onDrag(getPos(e));
+      updateDisplay();
+      updateSlider();
+    }
+
+    function onEnd() {
+      if (!dragging) return;
+      dragging = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
+      saveTrim();
+    }
+
+    handle.addEventListener('mousedown', onStart);
+    handle.addEventListener('touchstart', onStart);
+  }
+
+  makeDraggable(handleStart, (pos) => {
+    trimStart = Math.max(0, pos);
+    const effEnd = trimEnd > 0 ? trimEnd : duration;
+    if (trimStart >= effEnd - 1) trimStart = effEnd - 1;
+  });
+
+  makeDraggable(handleEnd, (pos) => {
+    trimEnd = Math.min(duration, pos);
+    if (trimEnd <= trimStart + 1) trimEnd = trimStart + 1;
+    if (trimEnd >= duration) trimEnd = 0;
+  });
+
+  track.addEventListener('click', (e) => {
+    if (duration <= 0) return;
+    const rect = track.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    const time = Math.max(0, Math.min(duration, pct * duration));
+    playerEl.currentTime = time;
+  });
+
+  updateDisplay();
+  updateSlider();
+}
+
+function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
+  const origLines = (cleaning.originalText || '').split('\n');
+  const cleanLines = (cleaning.cleanedText || '').split('\n');
+  const maxLen = Math.max(origLines.length, cleanLines.length);
+
+  const rows = [];
+  for (let i = 0; i < maxLen; i++) {
+    const orig = origLines[i] || '';
+    const clean = cleanLines[i] || '';
+    const changed = orig !== clean;
+    rows.push({ lineNum: i + 1, orig, clean, changed, accepted: true, editedClean: clean });
+  }
+
+  const changedCount = rows.filter(r => r.changed).length;
+  if (changedCount === 0) return;
+
+  const viewer = document.createElement('div');
+  viewer.className = 'diff-viewer';
+
+  // Action bar
+  const actions = document.createElement('div');
+  actions.className = 'diff-actions';
+
+  const countLabel = document.createElement('span');
+  countLabel.className = 'text-secondary';
+  countLabel.textContent = changedCount + ' line' + (changedCount !== 1 ? 's' : '') + ' changed';
+  actions.appendChild(countLabel);
+
+  const acceptAllBtn = document.createElement('button');
+  acceptAllBtn.className = 'action-btn';
+  acceptAllBtn.textContent = 'Accept All';
+  acceptAllBtn.addEventListener('click', () => {
+    rows.forEach(r => { if (r.changed) r.accepted = true; });
+    viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = true; });
+  });
+  actions.appendChild(acceptAllBtn);
+
+  const rejectAllBtn = document.createElement('button');
+  rejectAllBtn.className = 'action-btn action-btn-danger';
+  rejectAllBtn.textContent = 'Reject All';
+  rejectAllBtn.addEventListener('click', () => {
+    rows.forEach(r => { if (r.changed) r.accepted = false; });
+    viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = false; });
+  });
+  actions.appendChild(rejectAllBtn);
+
+  viewer.appendChild(actions);
+
+  // Rows container
+  const rowsContainer = document.createElement('div');
+  rowsContainer.className = 'diff-rows-container';
+
+  rows.forEach((row, idx) => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'diff-row' + (row.changed ? ' diff-row-changed' : '');
+
+    const lineNum = document.createElement('span');
+    lineNum.className = 'diff-row-linenum';
+    lineNum.textContent = row.lineNum;
+    rowEl.appendChild(lineNum);
+
+    if (row.changed) {
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'diff-row-checkbox';
+      cb.checked = row.accepted;
+      cb.addEventListener('change', () => { row.accepted = cb.checked; });
+      rowEl.appendChild(cb);
+
+      const origSpan = document.createElement('span');
+      origSpan.className = 'diff-original';
+      origSpan.dir = 'rtl';
+      origSpan.textContent = row.orig || '(empty)';
+      rowEl.appendChild(origSpan);
+
+      const arrow = document.createElement('span');
+      arrow.className = 'diff-arrow';
+      arrow.textContent = '\u2192';
+      rowEl.appendChild(arrow);
+
+      if (row.clean) {
+        const cleanSpan = document.createElement('span');
+        cleanSpan.className = 'diff-cleaned';
+        cleanSpan.dir = 'rtl';
+        cleanSpan.contentEditable = 'true';
+        cleanSpan.textContent = row.clean;
+        cleanSpan.addEventListener('blur', () => {
+          row.editedClean = cleanSpan.textContent;
+        });
+        rowEl.appendChild(cleanSpan);
+      } else {
+        const removed = document.createElement('span');
+        removed.className = 'diff-line-removed-label';
+        removed.textContent = '(removed)';
+        rowEl.appendChild(removed);
+      }
+    } else {
+      const spacer = document.createElement('span');
+      spacer.className = 'diff-row-checkbox-spacer';
+      rowEl.appendChild(spacer);
+
+      const unchanged = document.createElement('span');
+      unchanged.className = 'diff-unchanged';
+      unchanged.dir = 'rtl';
+      unchanged.textContent = row.orig;
+      rowEl.appendChild(unchanged);
+    }
+
+    rowsContainer.appendChild(rowEl);
+  });
+
+  viewer.appendChild(rowsContainer);
+
+  // Apply bar
+  const applyBar = document.createElement('div');
+  applyBar.className = 'diff-apply-bar';
+
+  const applyBtn = document.createElement('button');
+  applyBtn.className = 'btn btn-secondary';
+  applyBtn.textContent = 'Apply Changes';
+  applyBtn.addEventListener('click', () => {
+    const finalLines = rows.map(r => {
+      if (!r.changed) return r.orig;
+      return r.accepted ? r.editedClean : r.orig;
+    });
+    const finalText = finalLines.join('\n');
+    addVersion(audioId, {
+      type: 'edited',
+      text: finalText,
+      createdBy: 'user-diff-review',
+    });
+    const s = getState();
+    const audio = s.audio.find(a => a.id === audioId);
+    renderDetailPage(audioId, audio, s, pageContainer);
+  });
+  applyBar.appendChild(applyBtn);
+  viewer.appendChild(applyBar);
+
+  container.appendChild(viewer);
 }

@@ -9,7 +9,11 @@ function getAudioUrl(audioId, state) {
 }
 
 function fetchAudioAsBase64(url) {
-  return fetch(url)
+  const fetchUrl = url.includes('audio.kohnai.ai')
+    ? `/api/audio?url=${encodeURIComponent(url)}`
+    : url;
+
+  return fetch(fetchUrl)
     .then(res => {
       if (!res.ok) throw new Error(`Failed to fetch audio: ${res.status}`);
       return res.blob();

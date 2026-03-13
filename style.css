@@ -416,6 +416,33 @@ input {
   transform: scale(1.08);
 }
 
+/* === Karaoke Word Chips === */
+.karaoke-word {
+  display: inline-block;
+  padding: 3px 8px;
+  margin: 2px;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  direction: rtl;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', 'Times New Roman', serif;
+}
+.karaoke-word.confidence-high { background: var(--green-dim); color: var(--green); }
+.karaoke-word.confidence-mid { background: var(--orange-dim); color: var(--orange); }
+.karaoke-word.confidence-low { background: var(--red-dim); color: var(--red); }
+.karaoke-word.confidence-high:hover { background: rgba(22, 163, 74, 0.25); }
+.karaoke-word.confidence-mid:hover { background: rgba(234, 88, 12, 0.25); }
+.karaoke-word.confidence-low:hover { background: rgba(220, 38, 38, 0.25); }
+.karaoke-word.active {
+  background: var(--accent) !important;
+  color: var(--bg) !important;
+  transform: scale(1.12);
+  box-shadow: 0 0 12px var(--accent), 0 0 4px var(--accent);
+  z-index: 1;
+  position: relative;
+}
+
 .word-chip[contenteditable="true"] {
   outline: 2px solid var(--accent);
   background: var(--surface-hover);
@@ -1786,4 +1813,183 @@ input {
   max-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;
+}
+
+/* === Trim Controls === */
+.trim-controls {
+  margin-top: 12px;
+  padding: 14px 16px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.trim-slider {
+  padding: 8px 0;
+}
+
+.trim-track {
+  position: relative;
+  height: 8px;
+  background: var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.trim-range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--accent-dim);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.trim-handle {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  z-index: 2;
+  transition: box-shadow 0.15s ease;
+}
+
+.trim-handle:hover {
+  box-shadow: 0 0 0 4px var(--accent-dim);
+}
+
+.trim-handle:active {
+  cursor: grabbing;
+  box-shadow: 0 0 0 6px var(--accent-dim);
+}
+
+.trim-time-display {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.trim-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* === Cleaning Diff Viewer === */
+.diff-viewer {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.diff-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-rows-container {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.diff-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.diff-row:last-child {
+  border-bottom: none;
+}
+
+.diff-row-changed {
+  background: var(--orange-dim);
+}
+
+.diff-row-linenum {
+  min-width: 28px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: right;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.diff-row-checkbox {
+  accent-color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.diff-row-checkbox-spacer {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.diff-original {
+  background: var(--red-dim);
+  text-decoration: line-through;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.diff-cleaned {
+  background: var(--green-dim);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  outline: none;
+}
+
+.diff-cleaned:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.diff-unchanged {
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.diff-arrow {
+  color: var(--text-muted);
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.diff-apply-bar {
+  padding: 10px 14px;
+  background: var(--surface-alt);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.diff-line-removed-label {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.82rem;
 }

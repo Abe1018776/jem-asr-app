@@ -15,6 +15,7 @@ export function initState(data) {
     reviews: saved.reviews || {},
     benchmarks: saved.benchmarks || {},
     asrModels: saved.asrModels || [],
+    trims: saved.trims || {},
   };
   // Migrate old format into transcriptVersions
   migrateToVersions();
@@ -258,6 +259,7 @@ export function exportState() {
     alignments: state.alignments,
     reviews: state.reviews,
     benchmarks: state.benchmarks,
+    trims: state.trims,
     asrModels: (state.asrModels || []).map(m => {
       const { apiKey, ...rest } = m;
       return rest;
@@ -288,6 +290,7 @@ export function importState(file) {
         if (imported.alignments) Object.assign(state.alignments, imported.alignments);
         if (imported.reviews) Object.assign(state.reviews, imported.reviews);
         if (imported.benchmarks) Object.assign(state.benchmarks, imported.benchmarks);
+        if (imported.trims) Object.assign(state.trims, imported.trims);
         if (imported.asrModels) {
           const existing = state.asrModels || [];
           for (const model of imported.asrModels) {
@@ -321,6 +324,7 @@ function saveToStorage() {
       reviews: state.reviews,
       benchmarks: state.benchmarks,
       asrModels: state.asrModels,
+      trims: state.trims,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
   } catch (e) {

@@ -2,7 +2,15 @@ import { generateSRT, generateVTT } from './utils.js';
 
 export function renderKaraokePlayer(audioId, state) {
   const entry = state.audio.find(a => a.id === audioId);
-  const alignment = state.alignments[audioId];
+
+  // Try transcriptVersions first, fall back to legacy alignments
+  let alignment = null;
+  const versions = state.transcriptVersions && state.transcriptVersions[audioId];
+  if (versions && versions.length > 0) {
+    const withAlignment = versions.find(v => v.alignment && v.alignment.words);
+    if (withAlignment) alignment = withAlignment.alignment;
+  }
+  if (!alignment) alignment = state.alignments[audioId];
   if (!entry || !alignment || !alignment.words) return;
 
   const audioUrl = entry.r2Link || entry.driveLink;
@@ -81,8 +89,10 @@ export function renderKaraokePlayer(audioId, state) {
   const chipEls = [];
   words.forEach((w, idx) => {
     const span = document.createElement('span');
-    const level = w.confidence >= 0.8 ? 'high' : w.confidence >= 0.4 ? 'mid' : 'low';
-    span.className = `word-chip confidence-${level}-bg`;
+    const conf = typeof w.confidence === 'number' ? w.confidence : 1;
+    const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
+    span.className = `karaoke-word word-chip confidence-${level}`;
+    span.title = `${(conf * 100).toFixed(0)}% confidence`;
     span.textContent = w.word;
     span.dataset.start = w.start;
     span.dataset.end = w.end;
