@@ -59,11 +59,21 @@ export async function alignRow(audioId, state) {
   }
 
   const data = await response.json();
-  const words = (data.timestamps || []).map(t => ({
-    word: t.word,
-    start: t.start,
-    end: t.end,
-    confidence: t.confidence,
+  console.log('[Align] raw response keys:', Object.keys(data));
+  if (data.timestamps?.[0]) console.log('[Align] sample timestamp:', JSON.stringify(data.timestamps[0]));
+  if (data.segments?.[0]?.words?.[0]) console.log('[Align] sample segment word:', JSON.stringify(data.segments[0].words[0]));
+
+  // Try timestamps first, fall back to flattened segments.words
+  let rawWords = data.timestamps || [];
+  if (rawWords.length === 0 && data.segments) {
+    rawWords = data.segments.flatMap(seg => seg.words || []);
+  }
+
+  const words = rawWords.map(t => ({
+    word: t.word || t.text || '',
+    start: t.start || 0,
+    end: t.end || 0,
+    confidence: t.confidence ?? t.probability ?? t.score ?? 0,
   }));
 
   const totalConf = words.reduce((sum, w) => sum + (w.confidence || 0), 0);

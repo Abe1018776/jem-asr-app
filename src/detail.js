@@ -701,7 +701,17 @@ function renderWordView(audioId, cleaning, alignment, container, pageContainer, 
 
   const chipEls = [];
 
-  if (words.length > 0) {
+  // Check if alignment words are actually populated
+  const hasWordText = words.length > 0 && words.some(w => (w.word || w.text || '').length > 0);
+
+  if (words.length > 0 && !hasWordText) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'padding:12px;color:var(--orange);font-size:0.9rem;';
+    notice.textContent = 'Alignment data has empty word text. Please re-run alignment to fix.';
+    wordGrid.appendChild(notice);
+  }
+
+  if (hasWordText) {
     // We have alignment — show word chips with confidence + diff
     const removedWords = new Set();
     if (cleaning && origText !== cleanText) {
@@ -711,13 +721,15 @@ function renderWordView(audioId, cleaning, alignment, container, pageContainer, 
       origTokens.forEach(w => { if (!cleanTokens.has(w)) removedWords.add(w); });
     }
 
+    if (words.length > 0) console.log('[WordView] sample words:', words.slice(0, 5));
     words.forEach((w, idx) => {
       const span = document.createElement('span');
       const conf = typeof w.confidence === 'number' ? w.confidence : 1;
       const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
       span.className = `word-chip confidence-${level}`;
-      span.title = `${(conf * 100).toFixed(0)}% | ${w.start.toFixed(2)}s–${w.end.toFixed(2)}s`;
-      span.textContent = w.word;
+      const wordText = w.word || w.text || '';
+      span.title = `"${wordText}" ${(conf * 100).toFixed(0)}% | ${w.start.toFixed(2)}s–${w.end.toFixed(2)}s`;
+      span.textContent = wordText;
       span.dataset.idx = idx;
 
       // Click to seek
