@@ -2009,6 +2009,23 @@ input {
   overflow: hidden;
 }
 
+.diff-header {
+  padding: 10px 14px;
+  background: var(--surface-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+.diff-legend-orig {
+  color: var(--red);
+  text-decoration: line-through;
+}
+
+.diff-legend-clean {
+  color: var(--green);
+}
+
 .diff-actions {
   display: flex;
   align-items: center;
@@ -2016,6 +2033,17 @@ input {
   padding: 10px 14px;
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.diff-filter-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .diff-rows-container {
@@ -2027,7 +2055,7 @@ input {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid var(--border);
   font-size: 0.88rem;
   line-height: 1.6;
@@ -2047,13 +2075,15 @@ input {
   font-size: 0.75rem;
   text-align: right;
   flex-shrink: 0;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 
 .diff-row-checkbox {
   accent-color: var(--accent);
   flex-shrink: 0;
   margin-top: 4px;
+  width: 16px;
+  height: 16px;
 }
 
 .diff-row-checkbox-spacer {
@@ -2061,30 +2091,52 @@ input {
   flex-shrink: 0;
 }
 
-.diff-original {
+.diff-block {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.diff-line-orig {
   background: var(--red-dim);
   text-decoration: line-through;
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-radius: 3px;
   font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
-  flex: 1;
-  min-width: 0;
   word-break: break-word;
+  color: var(--red);
 }
 
-.diff-cleaned {
+.diff-line-clean {
   background: var(--green-dim);
-  padding: 2px 6px;
+  padding: 4px 8px;
   border-radius: 3px;
   font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', serif;
-  flex: 1;
-  min-width: 0;
   word-break: break-word;
-  outline: none;
 }
 
-.diff-cleaned:focus {
-  box-shadow: 0 0 0 2px var(--accent);
+.diff-side-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  display: inline-block;
+  margin-inline-end: 6px;
+  direction: ltr;
+}
+
+.diff-editable {
+  outline: none;
+  border-bottom: 1px dashed var(--border);
+  cursor: text;
+}
+
+.diff-editable:focus {
+  border-bottom-color: var(--accent);
+  background: var(--surface);
+  border-radius: 2px;
 }
 
 .diff-unchanged {
@@ -2092,12 +2144,7 @@ input {
   flex: 1;
   min-width: 0;
   word-break: break-word;
-}
-
-.diff-arrow {
-  color: var(--text-muted);
-  flex-shrink: 0;
-  padding: 0 2px;
+  color: var(--text-secondary);
 }
 
 .diff-apply-bar {
@@ -2105,7 +2152,10 @@ input {
   background: var(--surface-alt);
   border-top: 1px solid var(--border);
   display: flex;
+  align-items: center;
+  gap: 12px;
   justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .diff-line-removed-label {

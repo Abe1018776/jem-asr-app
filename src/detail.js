@@ -1037,6 +1037,14 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
   const viewer = document.createElement('div');
   viewer.className = 'diff-viewer';
 
+  // Header with explanation
+  const header = document.createElement('div');
+  header.className = 'diff-header';
+  header.innerHTML = '<strong>Cleaning Diff Review</strong> — ' +
+    '<span class="diff-legend-orig">Red strikethrough = original (removed by cleaning)</span> ' +
+    '<span class="diff-legend-clean">Green = cleaned result (click to edit inline)</span>';
+  viewer.appendChild(header);
+
   // Action bar
   const actions = document.createElement('div');
   actions.className = 'diff-actions';
@@ -1048,7 +1056,7 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
 
   const acceptAllBtn = document.createElement('button');
   acceptAllBtn.className = 'action-btn';
-  acceptAllBtn.textContent = 'Accept All';
+  acceptAllBtn.textContent = 'Accept All Changes';
   acceptAllBtn.addEventListener('click', () => {
     rows.forEach(r => { if (r.changed) r.accepted = true; });
     viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = true; });
@@ -1057,12 +1065,20 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
 
   const rejectAllBtn = document.createElement('button');
   rejectAllBtn.className = 'action-btn action-btn-danger';
-  rejectAllBtn.textContent = 'Reject All';
+  rejectAllBtn.textContent = 'Reject All (Keep Original)';
   rejectAllBtn.addEventListener('click', () => {
     rows.forEach(r => { if (r.changed) r.accepted = false; });
     viewer.querySelectorAll('.diff-row-checkbox').forEach(cb => { cb.checked = false; });
   });
   actions.appendChild(rejectAllBtn);
+
+  const showOnlyChanged = document.createElement('label');
+  showOnlyChanged.className = 'diff-filter-label';
+  const showOnlyCb = document.createElement('input');
+  showOnlyCb.type = 'checkbox';
+  showOnlyChanged.appendChild(showOnlyCb);
+  showOnlyChanged.appendChild(document.createTextNode(' Show only changed lines'));
+  actions.appendChild(showOnlyChanged);
 
   viewer.appendChild(actions);
 
@@ -1070,7 +1086,8 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
   const rowsContainer = document.createElement('div');
   rowsContainer.className = 'diff-rows-container';
 
-  rows.forEach((row, idx) => {
+  const rowEls = [];
+  rows.forEach((row) => {
     const rowEl = document.createElement('div');
     rowEl.className = 'diff-row' + (row.changed ? ' diff-row-changed' : '');
 
@@ -1080,40 +1097,58 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
     rowEl.appendChild(lineNum);
 
     if (row.changed) {
+      // Checkbox: checked = use cleaned, unchecked = keep original
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.className = 'diff-row-checkbox';
       cb.checked = row.accepted;
+      cb.title = 'Checked = accept cleaned version, Unchecked = keep original';
       cb.addEventListener('change', () => { row.accepted = cb.checked; });
       rowEl.appendChild(cb);
 
-      const origSpan = document.createElement('span');
-      origSpan.className = 'diff-original';
-      origSpan.dir = 'rtl';
-      origSpan.textContent = row.orig || '(empty)';
-      rowEl.appendChild(origSpan);
+      // Two-row layout: original on top, cleaned below
+      const diffBlock = document.createElement('div');
+      diffBlock.className = 'diff-block';
 
-      const arrow = document.createElement('span');
-      arrow.className = 'diff-arrow';
-      arrow.textContent = '\u2192';
-      rowEl.appendChild(arrow);
+      const origRow = document.createElement('div');
+      origRow.className = 'diff-line-orig';
+      origRow.dir = 'rtl';
+      const origLabel = document.createElement('span');
+      origLabel.className = 'diff-side-label';
+      origLabel.textContent = 'Original:';
+      origRow.appendChild(origLabel);
+      const origText = document.createElement('span');
+      origText.textContent = row.orig || '(empty line)';
+      origRow.appendChild(origText);
+      diffBlock.appendChild(origRow);
+
+      const cleanRow = document.createElement('div');
+      cleanRow.className = 'diff-line-clean';
+      cleanRow.dir = 'rtl';
+      const cleanLabel = document.createElement('span');
+      cleanLabel.className = 'diff-side-label';
+      cleanLabel.textContent = 'Cleaned:';
+      cleanRow.appendChild(cleanLabel);
 
       if (row.clean) {
-        const cleanSpan = document.createElement('span');
-        cleanSpan.className = 'diff-cleaned';
-        cleanSpan.dir = 'rtl';
-        cleanSpan.contentEditable = 'true';
-        cleanSpan.textContent = row.clean;
-        cleanSpan.addEventListener('blur', () => {
-          row.editedClean = cleanSpan.textContent;
+        const cleanText = document.createElement('span');
+        cleanText.className = 'diff-editable';
+        cleanText.contentEditable = 'true';
+        cleanText.textContent = row.clean;
+        cleanText.title = 'Click to edit this line';
+        cleanText.addEventListener('blur', () => {
+          row.editedClean = cleanText.textContent;
         });
-        rowEl.appendChild(cleanSpan);
+        cleanRow.appendChild(cleanText);
       } else {
         const removed = document.createElement('span');
         removed.className = 'diff-line-removed-label';
-        removed.textContent = '(removed)';
-        rowEl.appendChild(removed);
+        removed.textContent = '(line removed)';
+        cleanRow.appendChild(removed);
       }
+      diffBlock.appendChild(cleanRow);
+
+      rowEl.appendChild(diffBlock);
     } else {
       const spacer = document.createElement('span');
       spacer.className = 'diff-row-checkbox-spacer';
@@ -1127,17 +1162,39 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
     }
 
     rowsContainer.appendChild(rowEl);
+    rowEls.push({ el: rowEl, changed: row.changed });
+  });
+
+  // Toggle to show only changed lines
+  showOnlyCb.addEventListener('change', () => {
+    rowEls.forEach(r => {
+      if (!r.changed) r.el.style.display = showOnlyCb.checked ? 'none' : '';
+    });
   });
 
   viewer.appendChild(rowsContainer);
 
-  // Apply bar
+  // Bottom bar with Apply and Cancel
   const applyBar = document.createElement('div');
   applyBar.className = 'diff-apply-bar';
 
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'action-btn';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => {
+    viewer.remove();
+  });
+  applyBar.appendChild(cancelBtn);
+
+  const applyInfo = document.createElement('span');
+  applyInfo.className = 'text-secondary';
+  applyInfo.style.fontSize = '0.82rem';
+  applyInfo.textContent = 'Apply creates a new "Edited" version visible in the Transcript Mapping tabs above';
+  applyBar.appendChild(applyInfo);
+
   const applyBtn = document.createElement('button');
   applyBtn.className = 'btn btn-secondary';
-  applyBtn.textContent = 'Apply Changes';
+  applyBtn.textContent = 'Apply & Save as Edited Version';
   applyBtn.addEventListener('click', () => {
     const finalLines = rows.map(r => {
       if (!r.changed) return r.orig;
