@@ -125,6 +125,7 @@ function getStatusClass(status) {
     aligned: 'status-aligned',
     reviewed: 'status-reviewed',
     approved: 'status-approved',
+    rejected: 'status-rejected',
   };
   return map[status] || 'status-unmapped';
 }

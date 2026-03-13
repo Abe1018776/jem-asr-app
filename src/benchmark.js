@@ -1,5 +1,5 @@
 import { getState, updateState } from './state.js';
-import { calculateWER, normalizeYiddish } from './utils.js';
+import { calculateWER, normalizeYiddish, levenshtein } from './utils.js';
 
 // ── ASR Config Modal ────────────────────────────────────────────────
 
@@ -118,7 +118,12 @@ export async function runBenchmark(benchmarkAudioIds, state, onProgress) {
     const transcript = mapping
       ? state.transcripts.find(t => t.id === mapping.transcriptId)
       : null;
-    const goldTranscript = transcript?.firstLine || '';
+    const cleaningData = state.cleaning?.[audio.id];
+    const goldTranscript = cleaningData?.cleanedText
+      || transcript?.text
+      || transcript?.cleanedText
+      || transcript?.firstLine
+      || '';
 
     if (!state.benchmarks[audio.id]) {
       state.benchmarks[audio.id] = { results: [] };
@@ -202,13 +207,19 @@ export function renderBenchmarkTable(container, state) {
   const benchmarks = state.benchmarks || {};
 
   if (benchmarkAudios.length === 0) {
-    container.innerHTML = '<p class="empty-message">No benchmark audio files found.</p>';
+    const msg = document.createElement('p');
+    msg.className = 'empty-message';
+    msg.textContent = 'No benchmark audio files found.';
+    container.appendChild(msg);
     return;
   }
 
   const hasResults = benchmarkAudios.some(a => benchmarks[a.id]?.results?.length > 0);
   if (!hasResults) {
-    container.innerHTML = '<p class="empty-message">No benchmark results yet. Configure ASR models and run benchmark.</p>';
+    const msg = document.createElement('p');
+    msg.className = 'empty-message';
+    msg.textContent = 'No benchmark results yet. Configure ASR models and run benchmark.';
+    container.appendChild(msg);
     return;
   }
 
@@ -226,7 +237,9 @@ export function renderBenchmarkTable(container, state) {
   // Header row with model names
   const thead = document.createElement('thead');
   const headerRow = document.createElement('tr');
-  headerRow.innerHTML = '<th>Benchmark File</th>';
+  const fileHeader = document.createElement('th');
+  fileHeader.textContent = 'Benchmark File';
+  headerRow.appendChild(fileHeader);
   modelList.forEach(name => {
     const th = document.createElement('th');
     th.textContent = name;
@@ -237,7 +250,8 @@ export function renderBenchmarkTable(container, state) {
 
   // Sub-header for WER/CER
   const subRow = document.createElement('tr');
-  subRow.innerHTML = '<th></th>';
+  const emptyTh = document.createElement('th');
+  subRow.appendChild(emptyTh);
   modelList.forEach(() => {
     const werTh = document.createElement('th');
     werTh.textContent = 'WER';
@@ -342,10 +356,15 @@ export function renderWordErrors(result, container) {
   let goldText = '';
   for (const audio of benchmarkAudios) {
     const runs = state.benchmarks[audio.id]?.results || [];
-    if (runs.some(r => r === result)) {
+    if (runs.some(r => r.model === result.model && r.ranAt === result.ranAt)) {
       const mapping = state.mappings[audio.id];
       const transcript = mapping ? state.transcripts.find(t => t.id === mapping.transcriptId) : null;
-      goldText = transcript?.firstLine || '';
+      const cleaningData = state.cleaning?.[audio.id];
+      goldText = cleaningData?.cleanedText
+        || transcript?.text
+        || transcript?.cleanedText
+        || transcript?.firstLine
+        || '';
       break;
     }
   }
@@ -355,39 +374,7 @@ export function renderWordErrors(result, container) {
   const refWords = refNorm.split(/\s+/).filter(Boolean);
   const hypWords = hypNorm.split(/\s+/).filter(Boolean);
 
-  // Levenshtein with backtrace for word-level display
-  const n = refWords.length;
-  const m = hypWords.length;
-  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-  for (let i = 0; i <= n; i++) dp[i][0] = i;
-  for (let j = 0; j <= m; j++) dp[0][j] = j;
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
-      if (refWords[i - 1] === hypWords[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1];
-      } else {
-        dp[i][j] = 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
-      }
-    }
-  }
-
-  const ops = [];
-  let i = n, j = m;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && refWords[i - 1] === hypWords[j - 1]) {
-      ops.unshift({ type: 'C', ref: refWords[i - 1], hyp: hypWords[j - 1] });
-      i--; j--;
-    } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
-      ops.unshift({ type: 'S', ref: refWords[i - 1], hyp: hypWords[j - 1] });
-      i--; j--;
-    } else if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
-      ops.unshift({ type: 'D', ref: refWords[i - 1], hyp: null });
-      i--;
-    } else {
-      ops.unshift({ type: 'I', ref: null, hyp: hypWords[j - 1] });
-      j--;
-    }
-  }
+  const { operations: ops } = levenshtein(refWords, hypWords);
 
   const wrapper = document.createElement('div');
   wrapper.className = 'word-errors-view';
@@ -395,7 +382,19 @@ export function renderWordErrors(result, container) {
 
   const legend = document.createElement('div');
   legend.className = 'word-error-legend';
-  legend.innerHTML = '<span class="word-correct">Correct</span> <span class="word-sub">Substitution</span> <span class="word-ins">Insertion</span> <span class="word-del">Deletion</span>';
+  const legendItems = [
+    { cls: 'word-correct', text: 'Correct' },
+    { cls: 'word-sub', text: 'Substitution' },
+    { cls: 'word-ins', text: 'Insertion' },
+    { cls: 'word-del', text: 'Deletion' },
+  ];
+  legendItems.forEach(item => {
+    const span = document.createElement('span');
+    span.className = item.cls;
+    span.textContent = item.text;
+    legend.appendChild(span);
+    legend.appendChild(document.createTextNode(' '));
+  });
   wrapper.appendChild(legend);
 
   const wordGrid = document.createElement('div');

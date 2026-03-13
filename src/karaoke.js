@@ -1,3 +1,5 @@
+import { generateSRT, generateVTT } from './utils.js';
+
 export function renderKaraokePlayer(audioId, state) {
   const entry = state.audio.find(a => a.id === audioId);
   const alignment = state.alignments[audioId];
@@ -56,7 +58,7 @@ export function renderKaraokePlayer(audioId, state) {
   srtBtn.className = 'btn btn-secondary';
   srtBtn.textContent = 'Export SRT';
   srtBtn.addEventListener('click', () => {
-    const content = exportSRT(words);
+    const content = generateSRT(words);
     downloadFile(content, (entry.name || audioId).replace(/\.[^.]+$/, '') + '.srt', 'text/plain');
   });
 
@@ -64,7 +66,7 @@ export function renderKaraokePlayer(audioId, state) {
   vttBtn.className = 'btn btn-secondary';
   vttBtn.textContent = 'Export VTT';
   vttBtn.addEventListener('click', () => {
-    const content = exportVTT(words);
+    const content = generateVTT(words);
     downloadFile(content, (entry.name || audioId).replace(/\.[^.]+$/, '') + '.vtt', 'text/vtt');
   });
 
@@ -141,32 +143,6 @@ export function renderKaraokePlayer(audioId, state) {
   document.body.appendChild(overlay);
 }
 
-export function exportSRT(words) {
-  if (!words || words.length === 0) return '';
-  const segments = groupSegments(words);
-  const lines = [];
-  segments.forEach((seg, i) => {
-    lines.push(String(i + 1));
-    lines.push(`${fmtSRT(seg.start)} --> ${fmtSRT(seg.end)}`);
-    lines.push(seg.text);
-    lines.push('');
-  });
-  return lines.join('\n');
-}
-
-export function exportVTT(words) {
-  if (!words || words.length === 0) return '';
-  const segments = groupSegments(words);
-  const lines = ['WEBVTT', ''];
-  segments.forEach((seg, i) => {
-    lines.push(String(i + 1));
-    lines.push(`${fmtVTT(seg.start)} --> ${fmtVTT(seg.end)}`);
-    lines.push(seg.text);
-    lines.push('');
-  });
-  return lines.join('\n');
-}
-
 export function downloadFile(content, filename, mimeType) {
   const blob = new Blob([content], { type: mimeType || 'text/plain' });
   const url = URL.createObjectURL(blob);
@@ -175,47 +151,4 @@ export function downloadFile(content, filename, mimeType) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-function groupSegments(words) {
-  const segments = [];
-  let current = null;
-
-  for (const w of words) {
-    if (!current) {
-      current = { start: w.start, end: w.end, wordList: [w.word] };
-    } else if (w.start - current.end > 0.5) {
-      current.text = current.wordList.join(' ');
-      segments.push(current);
-      current = { start: w.start, end: w.end, wordList: [w.word] };
-    } else {
-      current.end = w.end;
-      current.wordList.push(w.word);
-    }
-  }
-  if (current) {
-    current.text = current.wordList.join(' ');
-    segments.push(current);
-  }
-  return segments;
-}
-
-function fmtSRT(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
-  return `${p(h)}:${p(m)}:${p(s)},${String(ms).padStart(3, '0')}`;
-}
-
-function fmtVTT(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
-  return `${p(h)}:${p(m)}:${p(s)}.${String(ms).padStart(3, '0')}`;
-}
-
-function p(n) {
-  return String(n).padStart(2, '0');
 }

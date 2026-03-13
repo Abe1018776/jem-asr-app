@@ -4,8 +4,8 @@ export function parseHebrewDate(filename) {
   const year = yearMatch ? yearMatch[1] : null;
 
   const months = [
-    'Tishrei', 'Cheshvan', 'Kislev', 'Teves', 'Shvat', 'Adar',
-    'Adar I', 'Adar II', 'Nissan', 'Iyar', 'Sivan', 'Tammuz',
+    'Tishrei', 'Cheshvan', 'Kislev', 'Teves', 'Teives', 'Shvat', 'Shevat', 'Adar',
+    'Adar I', 'Adar II', 'Nissan', 'Iyar', 'Sivan', 'Tammuz', 'Tamuz',
     'Av', 'Elul',
   ];
   let month = null;
@@ -29,7 +29,7 @@ export function normalizeYiddish(text) {
   // Strip nikkud and cantillation marks (U+0591-U+05C7)
   result = result.replace(/[\u0591-\u05C7]/g, '');
   // Strip punctuation (keep Hebrew letters U+05D0-U+05EA, spaces, and basic alphanumerics)
-  result = result.replace(/[^\u05D0-\u05EA\w\s]/g, '');
+  result = result.replace(/[^\u05D0-\u05F4\w\s]/g, '');
   // Lowercase any Latin characters
   result = result.toLowerCase();
   // Collapse whitespace
@@ -64,6 +64,7 @@ export function levenshtein(refWords, hypWords) {
   let i = n, j = m;
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && refWords[i - 1] === hypWords[j - 1]) {
+      operations.unshift({ type: 'C', ref: refWords[i - 1], hyp: hypWords[j - 1] });
       i--; j--;
     } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
       operations.unshift({ type: 'S', ref: refWords[i - 1], hyp: hypWords[j - 1] });
@@ -158,7 +159,7 @@ function formatSRTTime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
+  const ms = Math.min(Math.round((seconds % 1) * 1000), 999);
   return `${pad(h)}:${pad(m)}:${pad(s)},${String(ms).padStart(3, '0')}`;
 }
 
@@ -166,7 +167,7 @@ function formatVTTTime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
-  const ms = Math.round((seconds % 1) * 1000);
+  const ms = Math.min(Math.round((seconds % 1) * 1000), 999);
   return `${pad(h)}:${pad(m)}:${pad(s)}.${String(ms).padStart(3, '0')}`;
 }
 
@@ -179,7 +180,7 @@ export function exportCSV(rows, columns) {
   const body = rows.map(row =>
     columns.map(c => {
       const val = typeof c.value === 'function' ? c.value(row) : row[c.key];
-      const str = val == null ? '' : String(val).replace(/"/g, '""');
+      const str = val == null ? '' : String(val).replace(/[\r\n]+/g, ' ').replace(/"/g, '""');
       return `"${str}"`;
     }).join(',')
   );

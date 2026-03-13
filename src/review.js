@@ -1,5 +1,72 @@
 import { updateState } from './state.js';
 
+/**
+ * Compute LCS (Longest Common Subsequence) table for two word arrays.
+ * Returns a 2D DP table used for backtracing the diff.
+ */
+function lcsTable(a, b) {
+  const n = a.length;
+  const m = b.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+  }
+  return dp;
+}
+
+/**
+ * Backtrace the LCS table to produce a diff: each original word is tagged
+ * as either 'kept' (present in cleaned) or 'removed'.
+ */
+function diffWords(original, cleaned) {
+  const dp = lcsTable(original, cleaned);
+  const result = [];
+  let i = original.length;
+  let j = cleaned.length;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && original[i - 1] === cleaned[j - 1]) {
+      result.unshift({ word: original[i - 1], type: 'kept' });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      // Word in cleaned but not in original (insertion) — show as kept
+      result.unshift({ word: cleaned[j - 1], type: 'kept' });
+      j--;
+    } else {
+      result.unshift({ word: original[i - 1], type: 'removed' });
+      i--;
+    }
+  }
+  return result;
+}
+
+/**
+ * Find the best matching alignment word for a given cleaned word and index.
+ * First tries exact index match, then searches by word text, falls back to
+ * confidence 1.
+ */
+function findWordConfidence(alignmentWords, word, index) {
+  // Try index-based match first
+  if (alignmentWords[index] && alignmentWords[index].word === word) {
+    return alignmentWords[index].confidence;
+  }
+  // Try to find by word text — pick the closest unused match
+  // Simple approach: scan for any entry with matching word text
+  for (let k = 0; k < alignmentWords.length; k++) {
+    if (alignmentWords[k].word === word) {
+      return alignmentWords[k].confidence;
+    }
+  }
+  // No match found — default to 1 (high confidence)
+  return 1;
+}
+
 export function renderReviewPanel(audioId, state, container, callbacks) {
   const entry = state.audio.find(a => a.id === audioId);
   const cleaning = state.cleaning[audioId];
@@ -7,23 +74,45 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
   const mapping = state.mappings[audioId];
   if (!entry) return;
 
-  container.innerHTML = '';
+  // Bug fix #2: Instead of clearing the entire container (which destroys
+  // audio players and other content), use a dedicated sub-div for review.
+  const reviewDivId = 'review-panel-' + audioId;
+  let reviewContainer = container.querySelector('#' + CSS.escape(reviewDivId));
+  if (reviewContainer) {
+    reviewContainer.innerHTML = '';
+  } else {
+    reviewContainer = document.createElement('div');
+    reviewContainer.id = reviewDivId;
+    container.appendChild(reviewContainer);
+  }
+
   const panel = document.createElement('div');
   panel.className = 'review-panel';
 
-  // Summary bar
+  // Summary bar — safe DOM construction (Bug fix #4: no innerHTML with data)
   const summary = document.createElement('div');
   summary.className = 'review-summary';
   const cleanRate = cleaning ? cleaning.cleanRate : '--';
   const avgConf = alignment ? Math.round(alignment.avgConfidence * 100) : '--';
   const lowCount = alignment ? alignment.lowConfidenceCount : '--';
 
-  summary.innerHTML = `
-    <span class="review-summary-item"><strong>${entry.name}</strong></span>
-    <span class="review-summary-item">Clean rate: <strong>${cleanRate}%</strong></span>
-    <span class="review-summary-item">Avg confidence: <strong>${avgConf}%</strong></span>
-    <span class="review-summary-item">Low confidence words: <strong>${lowCount}</strong></span>
-  `;
+  const summaryItems = [
+    { label: '', value: entry.name, bold: true },
+    { label: 'Clean rate: ', value: cleanRate + '%', bold: true },
+    { label: 'Avg confidence: ', value: avgConf + '%', bold: true },
+    { label: 'Low confidence words: ', value: String(lowCount), bold: true },
+  ];
+  for (const item of summaryItems) {
+    const span = document.createElement('span');
+    span.className = 'review-summary-item';
+    if (item.label) {
+      span.appendChild(document.createTextNode(item.label));
+    }
+    const strong = document.createElement('strong');
+    strong.textContent = item.value;
+    span.appendChild(strong);
+    summary.appendChild(span);
+  }
   panel.appendChild(summary);
 
   // Diff view
@@ -34,7 +123,9 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
   const cleanedText = cleaning ? cleaning.cleanedText : '';
   const originalWords = originalText.split(/\s+/).filter(Boolean);
   const cleanedWords = cleanedText.split(/\s+/).filter(Boolean);
-  const cleanedSet = new Set(cleanedWords);
+
+  // Bug fix #1: Use LCS-based diff instead of Set membership
+  const diff = diffWords(originalWords, cleanedWords);
 
   // Original text with removed words highlighted
   const origDiv = document.createElement('div');
@@ -47,12 +138,12 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
 
   const origContent = document.createElement('div');
   origContent.className = 'review-diff-content';
-  originalWords.forEach(word => {
+  diff.forEach(entry => {
     const span = document.createElement('span');
-    if (!cleanedSet.has(word)) {
+    if (entry.type === 'removed') {
       span.className = 'diff-removed';
     }
-    span.textContent = word + ' ';
+    span.textContent = entry.word + ' ';
     origContent.appendChild(span);
   });
   origDiv.appendChild(origContent);
@@ -72,7 +163,8 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
 
   cleanedWords.forEach((word, i) => {
     const span = document.createElement('span');
-    const conf = alignmentWords[i] ? alignmentWords[i].confidence : 1;
+    // Bug fix #3: Use word-text matching fallback instead of blind index
+    const conf = findWordConfidence(alignmentWords, word, i);
     const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
     span.className = `word-chip confidence-${level}-bg`;
     span.textContent = word;
@@ -149,7 +241,7 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
   actions.appendChild(skipBtn);
   panel.appendChild(actions);
 
-  container.appendChild(panel);
+  reviewContainer.appendChild(panel);
 }
 
 export function approveAll(audioIds, state) {

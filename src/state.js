@@ -35,6 +35,7 @@ export function updateState(key, audioId, value) {
 export function getStatus(audioId) {
   if (!state) return 'unmapped';
   if (state.reviews[audioId]?.status === 'approved') return 'approved';
+  if (state.reviews[audioId]?.status === 'rejected') return 'rejected';
   if (state.alignments[audioId]) return 'aligned';
   if (state.cleaning[audioId]) return 'cleaned';
   if (state.mappings[audioId]) return 'mapped';

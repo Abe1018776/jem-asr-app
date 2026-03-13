@@ -14,6 +14,13 @@ const R2_BASE = 'https://audio.kohnai.ai';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const resp = await fetch('/data.json');
+  if (!resp.ok) {
+    const container = document.getElementById('table-container');
+    if (container) {
+      container.innerHTML = '<div class="error-banner" style="padding:2rem;text-align:center;color:#f87171;">Failed to load data. Please refresh.</div>';
+    }
+    return;
+  }
   const raw = await resp.json();
 
   // Transform the mapping-site data.json format into our app format
@@ -265,7 +272,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const suggestionsDiv = document.createElement('div');
       suggestionsDiv.className = 'suggestions-container';
       renderSuggestedMatches(audioId, suggestionsDiv, state, (aId, tId) => {
-        const suggestions = state.transcripts.find(t => t.id === tId);
         linkMatch(aId, tId, 0.8, 'user selected');
         updateTable();
         onRowExpand(aId); // Re-render expanded panel

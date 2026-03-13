@@ -80,7 +80,10 @@ export function renderSuggestedMatches(audioId, container, state, onLink) {
 
   const suggestions = getSuggestedMatches(audio, state.transcripts, state.mappings);
   if (suggestions.length === 0) {
-    container.innerHTML = '<span class="text-secondary">No suggestions found</span>';
+    const noSuggestions = document.createElement('span');
+    noSuggestions.className = 'text-secondary';
+    noSuggestions.textContent = 'No suggestions found';
+    container.appendChild(noSuggestions);
     return;
   }
 
@@ -144,7 +147,9 @@ export function renderSearchModal(container, state, onSelect) {
 
   const header = document.createElement('div');
   header.className = 'modal-header';
-  header.innerHTML = '<h2>Search Transcripts</h2>';
+  const headerTitle = document.createElement('h2');
+  headerTitle.textContent = 'Search Transcripts';
+  header.appendChild(headerTitle);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'btn btn-close';
@@ -196,7 +201,12 @@ export function renderSearchModal(container, state, onSelect) {
     });
 
     if (filtered.length === 0) {
-      results.innerHTML = '<div class="text-secondary" style="padding:1rem">No transcripts found</div>';
+      results.innerHTML = '';
+      const noResults = document.createElement('div');
+      noResults.className = 'text-secondary';
+      noResults.style.padding = '1rem';
+      noResults.textContent = 'No transcripts found';
+      results.appendChild(noResults);
       return;
     }
 
