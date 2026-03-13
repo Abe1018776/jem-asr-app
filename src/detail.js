@@ -241,39 +241,30 @@ function renderMappingSection(audioId, state, container, pageContainer) {
     }
     info.appendChild(label);
 
-    // Show transcript preview
+    // Show transcript text
     if (transcript) {
-      const previewText = transcript.text || transcript.firstLine || '';
-      if (previewText) {
-        const preview = document.createElement('div');
-        preview.className = 'detail-transcript-preview';
-        preview.dir = 'rtl';
-        preview.textContent = previewText;
-        info.appendChild(preview);
-      }
+      const preview = document.createElement('div');
+      preview.className = 'detail-transcript-preview';
+      preview.dir = 'rtl';
 
-      // If transcript has r2TranscriptLink, offer to load full text
-      if (transcript.r2TranscriptLink && !transcript.text) {
-        const loadBtn = document.createElement('button');
-        loadBtn.className = 'action-btn';
-        loadBtn.textContent = 'Load Full Transcript';
-        loadBtn.addEventListener('click', async () => {
-          loadBtn.textContent = 'Loading...';
-          loadBtn.disabled = true;
-          try {
-            const resp = await fetch(transcript.r2TranscriptLink);
-            if (resp.ok) {
-              transcript.text = await resp.text();
-              renderMappingSection(audioId, getState(), container, pageContainer);
-            } else {
-              loadBtn.textContent = 'Failed to load';
+      if (transcript.text) {
+        preview.textContent = transcript.text;
+      } else {
+        preview.textContent = transcript.firstLine || '';
+        // Auto-load full text from R2
+        if (transcript.r2TranscriptLink) {
+          fetch(transcript.r2TranscriptLink).then(resp => {
+            if (resp.ok) return resp.text();
+            return null;
+          }).then(text => {
+            if (text) {
+              transcript.text = text;
+              preview.textContent = text;
             }
-          } catch {
-            loadBtn.textContent = 'Failed to load';
-          }
-        });
-        info.appendChild(loadBtn);
+          }).catch(() => {});
+        }
       }
+      info.appendChild(preview);
     }
 
     container.appendChild(info);
