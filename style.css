@@ -1612,3 +1612,104 @@ input {
 .review-diff-content {
   line-height: 2;
 }
+
+/* === Detail Page === */
+.detail-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.detail-title-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-title-bar h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.detail-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.detail-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.detail-section-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-section-content {
+  /* content container */
+}
+
+.detail-mapping-info {
+  margin-bottom: 8px;
+}
+
+.detail-transcript-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 8px 0;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+
+/* === Search modal transcript preview === */
+.search-result-preview-btn {
+  padding: 2px 8px;
+  background: var(--surface-hover);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.search-result-preview-btn:hover {
+  background: var(--border);
+  color: var(--text);
+}
+
+.search-result-expanded {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 0 14px 8px;
+  font-family: 'SBL Hebrew', 'David Libre', 'Noto Serif Hebrew', 'Times New Roman', serif;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  direction: rtl;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}

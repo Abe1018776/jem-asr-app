@@ -286,11 +286,11 @@ function buildTable(rows) {
         }
         case 'actions': {
           const btn = document.createElement('button');
-          btn.className = 'action-btn';
-          btn.textContent = 'View';
+          btn.className = 'action-btn action-btn-primary';
+          btn.textContent = 'Open';
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (_onRowExpand) _onRowExpand(row.id);
+            window.open(`/detail.html?id=${encodeURIComponent(row.id)}`, '_blank');
           });
           td.appendChild(btn);
           break;
@@ -302,7 +302,7 @@ function buildTable(rows) {
     });
 
     tr.addEventListener('click', () => {
-      if (_onRowExpand) _onRowExpand(row.id);
+      window.open(`/detail.html?id=${encodeURIComponent(row.id)}`, '_blank');
     });
 
     tbody.appendChild(tr);

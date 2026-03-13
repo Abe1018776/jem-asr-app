@@ -211,12 +211,10 @@ export function renderSearchModal(container, state, onSelect) {
     }
 
     for (const t of filtered.slice(0, 100)) {
+      const rowWrapper = document.createElement('div');
+
       const row = document.createElement('div');
       row.className = 'search-result-row';
-      row.addEventListener('click', () => {
-        onSelect(t.id);
-        overlay.remove();
-      });
 
       const name = document.createElement('span');
       name.className = 'result-name';
@@ -227,9 +225,52 @@ export function renderSearchModal(container, state, onSelect) {
       preview.dir = 'rtl';
       preview.textContent = truncateWords(t.firstLine || '', 15);
 
+      const previewBtn = document.createElement('button');
+      previewBtn.className = 'search-result-preview-btn';
+      previewBtn.textContent = 'Preview';
+      previewBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const existing = rowWrapper.querySelector('.search-result-expanded');
+        if (existing) { existing.remove(); return; }
+        const expanded = document.createElement('div');
+        expanded.className = 'search-result-expanded';
+        expanded.textContent = 'Loading...';
+        rowWrapper.appendChild(expanded);
+        if (t.text) {
+          expanded.textContent = t.text;
+        } else if (t.r2TranscriptLink) {
+          try {
+            const resp = await fetch(t.r2TranscriptLink);
+            if (resp.ok) {
+              t.text = await resp.text();
+              expanded.textContent = t.text;
+            } else {
+              expanded.textContent = t.firstLine || 'Could not load transcript';
+            }
+          } catch {
+            expanded.textContent = t.firstLine || 'Could not load transcript';
+          }
+        } else {
+          expanded.textContent = t.firstLine || 'No content available';
+        }
+      });
+
+      const selectBtn = document.createElement('button');
+      selectBtn.className = 'action-btn action-btn-primary';
+      selectBtn.textContent = 'Select';
+      selectBtn.style.flexShrink = '0';
+      selectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onSelect(t.id);
+        overlay.remove();
+      });
+
       row.appendChild(name);
       row.appendChild(preview);
-      results.appendChild(row);
+      row.appendChild(previewBtn);
+      row.appendChild(selectBtn);
+      rowWrapper.appendChild(row);
+      results.appendChild(rowWrapper);
     }
   }
 
