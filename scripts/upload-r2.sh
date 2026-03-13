@@ -13,7 +13,7 @@ echo "=== Uploading benchmark files ==="
 for file in "$BASE/benchmark/"*.mp3; do
   name=$(basename "$file")
   echo "  [$((UPLOADED+SKIPPED+1))] $name"
-  if npx wrangler r2 object put "$BUCKET/benchmark/$name" --file "$file" --content-type "audio/mpeg" > /dev/null 2>&1; then
+  if npx wrangler r2 object put "$BUCKET/benchmark/$name" --file "$file" --content-type "audio/mpeg" --remote > /dev/null 2>&1; then
     UPLOADED=$((UPLOADED+1))
   else
     echo "    FAILED: $name"
@@ -29,7 +29,7 @@ for file in "$BASE/training/"*.mp3; do
   COUNT=$((COUNT+1))
   name=$(basename "$file")
   echo "  [$COUNT/$TOTAL] $name"
-  if npx wrangler r2 object put "$BUCKET/training/$name" --file "$file" --content-type "audio/mpeg" > /dev/null 2>&1; then
+  if npx wrangler r2 object put "$BUCKET/training/$name" --file "$file" --content-type "audio/mpeg" --remote > /dev/null 2>&1; then
     UPLOADED=$((UPLOADED+1))
   else
     echo "    FAILED: $name"

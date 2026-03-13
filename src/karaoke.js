@@ -80,7 +80,7 @@ export function renderKaraokePlayer(audioId, state) {
   words.forEach((w, idx) => {
     const span = document.createElement('span');
     const level = w.confidence >= 0.8 ? 'high' : w.confidence >= 0.4 ? 'mid' : 'low';
-    span.className = `word-chip confidence-${level}`;
+    span.className = `word-chip confidence-${level}-bg`;
     span.textContent = w.word;
     span.dataset.start = w.start;
     span.dataset.end = w.end;

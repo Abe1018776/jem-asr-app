@@ -6,7 +6,7 @@ import { batchAlign } from './alignment.js';
 import { renderReviewPanel, approveAll } from './review.js';
 import { renderKaraokePlayer } from './karaoke.js';
 import { renderAsrConfig, runBenchmark, renderBenchmarkTable } from './benchmark.js';
-import { exportCSV, debounce, truncateWords } from './utils.js';
+import { exportCSV } from './utils.js';
 
 const R2_BASE = 'https://audio.kohnai.ai';
 
@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     transcriptMap.set(t.name, id);
     t.id = id;
     t.driveLink = t.link;
+    t.r2TranscriptLink = `${R2_BASE}/transcripts/${encodeURIComponent(t.name)}`;
     if (!t.firstLine && firstLines[t.name]) t.firstLine = firstLines[t.name];
   });
 
@@ -144,8 +145,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const audio = state.audio.find(a => a.id === audioId);
     if (!audio) return;
 
-    // Remove any existing expanded panel
-    const existing = document.querySelector('.expanded-panel');
+    // Remove any existing expanded panel (and its wrapper <tr> if present)
+    const existingRow = document.querySelector('.expanded-panel-row');
+    const existing = existingRow || document.querySelector('.expanded-panel');
     if (existing) {
       if (expandedRow === audioId) {
         existing.remove();
@@ -294,6 +296,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onSkip: () => {
           expandedRow = null;
+          const existingRow = document.querySelector('.expanded-panel-row');
+          if (existingRow) { existingRow.remove(); return; }
           const existing = document.querySelector('.expanded-panel');
           if (existing) existing.remove();
         },
@@ -327,10 +331,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Insert panel after the clicked row
+    // Insert panel after the clicked row, wrapped in a <tr><td> for valid HTML
     const targetRow = tableContainer.querySelector(`tr[data-audio-id="${audioId}"]`);
     if (targetRow) {
-      targetRow.after(panel);
+      const wrapperTr = document.createElement('tr');
+      wrapperTr.className = 'expanded-panel-row';
+      const wrapperTd = document.createElement('td');
+      const colCount = targetRow.children.length;
+      wrapperTd.colSpan = colCount;
+      wrapperTd.style.padding = '0';
+      wrapperTd.appendChild(panel);
+      wrapperTr.appendChild(wrapperTd);
+      targetRow.after(wrapperTr);
     } else {
       tableContainer.appendChild(panel);
     }
@@ -450,10 +462,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('search-input')?.focus();
     } else if (e.key === 'Escape') {
       closeModal();
-      const panel = document.querySelector('.expanded-panel');
-      if (panel) {
-        panel.remove();
+      const panelRow = document.querySelector('.expanded-panel-row');
+      if (panelRow) {
+        panelRow.remove();
         expandedRow = null;
+      } else {
+        const panel = document.querySelector('.expanded-panel');
+        if (panel) {
+          panel.remove();
+          expandedRow = null;
+        }
       }
     } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();

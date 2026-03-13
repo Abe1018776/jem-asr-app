@@ -74,7 +74,7 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
     const span = document.createElement('span');
     const conf = alignmentWords[i] ? alignmentWords[i].confidence : 1;
     const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
-    span.className = `word-chip confidence-${level}`;
+    span.className = `word-chip confidence-${level}-bg`;
     span.textContent = word;
     span.dataset.index = i;
 

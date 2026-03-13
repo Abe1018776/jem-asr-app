@@ -1,4 +1,4 @@
-import { getState, updateState } from './state.js';
+import { updateState } from './state.js';
 
 export function cleanText(rawText) {
   if (!rawText) return '';
