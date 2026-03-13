@@ -286,42 +286,12 @@ function renderDetailPage(audioId, audio, state, container) {
     container.appendChild(mappingSection.el);
   }
 
-  // === Section: Cleaning ===
+  // === Section: Cleaning + Alignment + Word View (unified) ===
   if (state.mappings[audioId] && !audio.isBenchmark) {
-    const cleanSection = createSection('Cleaning');
-    renderCleanSection(audioId, state, cleanSection.content, container);
-    container.appendChild(cleanSection.el);
-  }
-
-  // === Section: Alignment ===
-  if (state.cleaning[audioId] && !audio.isBenchmark) {
-    const alignSection = createSection('Alignment');
-    renderAlignSection(audioId, state, alignSection.content, container);
-    container.appendChild(alignSection.el);
-  }
-
-  // === Section: Review & Diff ===
-  if (state.cleaning[audioId] && !audio.isBenchmark) {
-    const reviewSection = createSection('Review & Diff');
-    renderReviewPanel(audioId, state, reviewSection.content, {
-      onApprove: () => renderDetailPage(audioId, audio, getState(), container),
-      onReject: () => renderDetailPage(audioId, audio, getState(), container),
-      onSkip: () => {},
-    });
-    container.appendChild(reviewSection.el);
-  }
-
-  // === Section: Karaoke ===
-  if (state.alignments[audioId]) {
-    const karaokeSection = createSection('Karaoke Player');
-    const karaokeBtn = document.createElement('button');
-    karaokeBtn.className = 'btn btn-secondary';
-    karaokeBtn.textContent = 'Open Karaoke Player';
-    karaokeBtn.addEventListener('click', () => {
-      renderKaraokePlayer(audioId, getState());
-    });
-    karaokeSection.content.appendChild(karaokeBtn);
-    container.appendChild(karaokeSection.el);
+    const workSection = createSection('Processing');
+    const playerEl = container.querySelector('.audio-player');
+    renderUnifiedWorkSection(audioId, state, workSection.content, container, playerEl);
+    container.appendChild(workSection.el);
   }
 }
 
@@ -600,59 +570,55 @@ function renderMappingSection(audioId, state, container, pageContainer) {
   }
 }
 
-function renderCleanSection(audioId, state, container, pageContainer) {
+function renderUnifiedWorkSection(audioId, state, container, pageContainer, playerEl) {
   const cleaning = state.cleaning[audioId];
+  const alignment = state.alignments[audioId];
 
-  // Get the current text to clean from
+  // ── Cleaning buttons ──
   function getCurrentText() {
-    const cleaning = getState().cleaning[audioId];
-    if (cleaning) return cleaning.cleanedText || cleaning.originalText || '';
-    // Fall back to transcript text
-    const mapping = getState().mappings[audioId];
-    if (!mapping) return '';
-    const transcript = getState().transcripts.find(t => t.id === mapping.transcriptId);
-    return transcript?.text || transcript?.firstLine || '';
+    const c = getState().cleaning[audioId];
+    if (c) return c.cleanedText || c.originalText || '';
+    const m = getState().mappings[audioId];
+    if (!m) return '';
+    const t = getState().transcripts.find(t => t.id === m.transcriptId);
+    return t?.text || t?.firstLine || '';
   }
-
   function getOriginalText() {
-    const cleaning = getState().cleaning[audioId];
-    return cleaning?.originalText || getCurrentText();
+    const c = getState().cleaning[audioId];
+    return c?.originalText || getCurrentText();
   }
 
-  // Individual cleaning buttons
+  const cleanLabel = document.createElement('div');
+  cleanLabel.className = 'section-sublabel';
+  cleanLabel.textContent = 'Cleaning';
+  container.appendChild(cleanLabel);
+
   const btnBar = document.createElement('div');
   btnBar.className = 'clean-btn-bar';
-
   const passes = [
     { label: 'Remove [brackets]', fn: cleanBrackets },
     { label: 'Remove (parentheses)', fn: cleanParentheses },
     { label: 'Remove section markers', fn: cleanSectionMarkers },
-    { label: 'Remove symbols !?-"…', fn: cleanSymbols },
+    { label: 'Remove symbols', fn: cleanSymbols },
     { label: 'Clean whitespace', fn: cleanWhitespace },
   ];
-
   passes.forEach(pass => {
     const btn = document.createElement('button');
     btn.className = 'action-btn clean-pass-btn';
     btn.textContent = pass.label;
     btn.addEventListener('click', () => {
       const original = getOriginalText();
-      const current = getCurrentText();
-      const result = pass.fn(current);
-      const cleanRate = calculateCleanRate(original, result);
+      const result = pass.fn(getCurrentText());
       updateState('cleaning', audioId, {
-        originalText: original,
-        cleanedText: result,
-        cleanRate,
+        originalText: original, cleanedText: result,
+        cleanRate: calculateCleanRate(original, result),
         cleanedAt: new Date().toISOString(),
       });
       const s = getState();
-      const audio = s.audio.find(a => a.id === audioId);
-      renderDetailPage(audioId, audio, s, pageContainer);
+      renderDetailPage(audioId, s.audio.find(a => a.id === audioId), s, pageContainer);
     });
     btnBar.appendChild(btn);
   });
-
   const cleanAllBtn = document.createElement('button');
   cleanAllBtn.className = 'action-btn action-btn-primary clean-pass-btn';
   cleanAllBtn.textContent = 'Clean All';
@@ -661,71 +627,193 @@ function renderCleanSection(audioId, state, container, pageContainer) {
     cleanAllBtn.disabled = true;
     await batchClean([audioId], getState(), () => {});
     const s = getState();
-    const audio = s.audio.find(a => a.id === audioId);
-    renderDetailPage(audioId, audio, s, pageContainer);
+    renderDetailPage(audioId, s.audio.find(a => a.id === audioId), s, pageContainer);
   });
   btnBar.appendChild(cleanAllBtn);
-
   container.appendChild(btnBar);
 
-  if (cleaning) {
-    const info = document.createElement('div');
-    info.className = 'text-secondary';
-    info.style.margin = '8px 0';
-    info.textContent = `Clean rate: ${cleaning.cleanRate}% | Cleaned at: ${new Date(cleaning.cleanedAt).toLocaleString()}`;
-    container.appendChild(info);
+  // ── Alignment button ──
+  const alignBar = document.createElement('div');
+  alignBar.style.cssText = 'display:flex;gap:8px;align-items:center;margin:10px 0;flex-wrap:wrap;';
 
-    // Row-by-row diff viewer
-    renderCleaningDiffViewer(audioId, cleaning, container, pageContainer);
+  const alignBtn = document.createElement('button');
+  alignBtn.className = 'action-btn action-btn-primary';
+  alignBtn.textContent = alignment ? 'Re-Align' : 'Run Alignment';
+  alignBtn.addEventListener('click', async () => {
+    alignBtn.textContent = 'Aligning (may take ~2.5 min)...';
+    alignBtn.disabled = true;
+    try {
+      await alignRow(audioId, getState());
+    } catch (err) {
+      alignBtn.textContent = 'Error: ' + err.message;
+      return;
+    }
+    const s = getState();
+    renderDetailPage(audioId, s.audio.find(a => a.id === audioId), s, pageContainer);
+  });
+  alignBar.appendChild(alignBtn);
+
+  if (alignment) {
+    const info = document.createElement('span');
+    info.className = 'text-secondary';
+    info.style.fontSize = '0.82rem';
+    info.textContent = `Avg: ${formatConfidence(alignment.avgConfidence)} | Low: ${alignment.lowConfidenceCount} words`;
+    alignBar.appendChild(info);
+  }
+  container.appendChild(alignBar);
+
+  // ── Unified Word View (diff + karaoke in one) ──
+  if (cleaning || alignment) {
+    renderWordView(audioId, cleaning, alignment, container, pageContainer, playerEl);
   }
 }
 
-function renderAlignSection(audioId, state, container, pageContainer) {
-  const alignment = state.alignments[audioId];
+function renderWordView(audioId, cleaning, alignment, container, pageContainer, playerEl) {
+  const origText = cleaning?.originalText || '';
+  const cleanText = cleaning?.cleanedText || origText;
+  const words = alignment?.words || [];
 
-  if (alignment) {
-    const info = document.createElement('div');
-    info.className = 'text-secondary';
-    info.style.marginBottom = '8px';
-    info.textContent = `Avg confidence: ${formatConfidence(alignment.avgConfidence)} | Low confidence words: ${alignment.lowConfidenceCount} | Aligned at: ${new Date(alignment.alignedAt).toLocaleString()}`;
-    container.appendChild(info);
+  const viewer = document.createElement('div');
+  viewer.className = 'word-view';
 
-    const reAlignBtn = document.createElement('button');
-    reAlignBtn.className = 'action-btn';
-    reAlignBtn.textContent = 'Re-Align';
-    reAlignBtn.addEventListener('click', async () => {
-      reAlignBtn.textContent = 'Aligning (may take ~2.5 min for cold start)...';
-      reAlignBtn.disabled = true;
-      try {
-        await alignRow(audioId, getState());
-      } catch (err) {
-        reAlignBtn.textContent = 'Error: ' + err.message;
-        return;
-      }
-      const s = getState();
-      const audio = s.audio.find(a => a.id === audioId);
-      renderDetailPage(audioId, audio, s, pageContainer);
+  // Speed controls if we have audio + alignment
+  if (playerEl && words.length > 0) {
+    const speedBar = document.createElement('div');
+    speedBar.className = 'word-view-speed-bar';
+    [0.5, 1, 1.5, 2].forEach(speed => {
+      const btn = document.createElement('button');
+      btn.className = 'speed-btn' + (speed === 1 ? ' active' : '');
+      btn.textContent = speed + 'x';
+      btn.addEventListener('click', () => {
+        playerEl.playbackRate = speed;
+        speedBar.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+      speedBar.appendChild(btn);
     });
-    container.appendChild(reAlignBtn);
-  } else {
-    const alignBtn = document.createElement('button');
-    alignBtn.className = 'btn btn-secondary';
-    alignBtn.textContent = 'Run Alignment';
-    alignBtn.addEventListener('click', async () => {
-      alignBtn.textContent = 'Aligning (may take ~2.5 min for cold start)...';
-      alignBtn.disabled = true;
-      try {
-        await alignRow(audioId, getState());
-      } catch (err) {
-        alignBtn.textContent = 'Error: ' + err.message;
-        return;
-      }
-      const s = getState();
-      const audio = s.audio.find(a => a.id === audioId);
-      renderDetailPage(audioId, audio, s, pageContainer);
-    });
-    container.appendChild(alignBtn);
+    viewer.appendChild(speedBar);
   }
+
+  // Word grid
+  const wordGrid = document.createElement('div');
+  wordGrid.className = 'word-view-grid';
+  wordGrid.dir = 'rtl';
+
+  const chipEls = [];
+
+  if (words.length > 0) {
+    // We have alignment — show word chips with confidence + diff
+    const removedWords = new Set();
+    if (cleaning && origText !== cleanText) {
+      // Find words that were in original but not in cleaned
+      const origTokens = origText.split(/\s+/).filter(Boolean);
+      const cleanTokens = new Set(cleanText.split(/\s+/).filter(Boolean));
+      origTokens.forEach(w => { if (!cleanTokens.has(w)) removedWords.add(w); });
+    }
+
+    words.forEach((w, idx) => {
+      const span = document.createElement('span');
+      const conf = typeof w.confidence === 'number' ? w.confidence : 1;
+      const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
+      span.className = `word-chip confidence-${level}`;
+      span.title = `${(conf * 100).toFixed(0)}% | ${w.start.toFixed(2)}s–${w.end.toFixed(2)}s`;
+      span.textContent = w.word;
+      span.dataset.idx = idx;
+
+      // Click to seek
+      if (playerEl) {
+        span.style.cursor = 'pointer';
+        span.addEventListener('click', () => {
+          playerEl.currentTime = w.start;
+          if (playerEl.paused) playerEl.play();
+        });
+      }
+
+      wordGrid.appendChild(span);
+      chipEls.push(span);
+    });
+
+    // Timeupdate highlight
+    if (playerEl) {
+      let prevActive = null;
+      const onTimeUpdate = () => {
+        const t = playerEl.currentTime;
+        let activeIdx = -1;
+        for (let i = 0; i < words.length; i++) {
+          if (t >= words[i].start && t < words[i].end) { activeIdx = i; break; }
+        }
+        if (prevActive !== null && prevActive !== activeIdx) {
+          chipEls[prevActive]?.classList.remove('active');
+        }
+        if (activeIdx >= 0 && activeIdx !== prevActive) {
+          chipEls[activeIdx].classList.add('active');
+          chipEls[activeIdx].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+        prevActive = activeIdx;
+      };
+      playerEl.addEventListener('timeupdate', onTimeUpdate);
+    }
+  } else if (cleaning) {
+    // No alignment yet — show line-by-line diff with word-level removed highlighting
+    const origLines = origText.split('\n');
+    const cleanLines = cleanText.split('\n');
+    const maxLen = Math.max(origLines.length, cleanLines.length);
+
+    for (let i = 0; i < maxLen; i++) {
+      const orig = origLines[i] || '';
+      const clean = cleanLines[i] || '';
+      if (orig === clean) {
+        // Unchanged line — plain text
+        const lineSpan = document.createElement('span');
+        lineSpan.className = 'word-view-line';
+        lineSpan.textContent = orig;
+        wordGrid.appendChild(lineSpan);
+      } else {
+        // Changed line — word-level diff
+        const lineDiv = document.createElement('span');
+        lineDiv.className = 'word-view-line word-view-line-changed';
+        const tokens = wordDiffTokens(orig, clean);
+        tokens.forEach(tok => {
+          if (tok.isSpace) {
+            lineDiv.appendChild(document.createTextNode(tok.text));
+            return;
+          }
+          const s = document.createElement('span');
+          s.textContent = tok.text;
+          if (tok.removed) s.className = 'diff-word-removed';
+          lineDiv.appendChild(s);
+        });
+        wordGrid.appendChild(lineDiv);
+      }
+      // Line break
+      wordGrid.appendChild(document.createElement('br'));
+    }
+  }
+
+  viewer.appendChild(wordGrid);
+
+  // Save as edited version button
+  if (cleaning) {
+    const saveBar = document.createElement('div');
+    saveBar.className = 'word-view-save-bar';
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-secondary';
+    saveBtn.textContent = 'Save Cleaned Text as Edited Version';
+    saveBtn.addEventListener('click', () => {
+      addVersion(audioId, {
+        type: 'edited',
+        text: cleaning.cleanedText,
+        alignment: alignment || undefined,
+        createdBy: 'user-review',
+      });
+      const s = getState();
+      renderDetailPage(audioId, s.audio.find(a => a.id === audioId), s, pageContainer);
+    });
+    saveBar.appendChild(saveBtn);
+    viewer.appendChild(saveBar);
+  }
+
+  container.appendChild(viewer);
 }
 
 function formatTime(seconds) {
@@ -1058,7 +1146,7 @@ function renderTrimControls(audioId, playerEl, container) {
 }
 
 // Word-level diff: returns array of {word, removed} tokens
-function wordDiff(origLine, cleanLine) {
+function wordDiffTokens(origLine, cleanLine) {
   const origWords = origLine.split(/(\s+)/);
   const cleanSet = new Set(cleanLine.split(/\s+/).filter(Boolean));
   // Simple approach: walk original words, mark ones not in cleaned as removed
@@ -1181,7 +1269,7 @@ function renderCleaningDiffViewer(audioId, cleaning, container, pageContainer) {
       diffContent.className = 'diff-word-content';
       diffContent.dir = 'rtl';
 
-      const tokens = wordDiff(row.orig, row.clean);
+      const tokens = wordDiffTokens(row.orig, row.clean);
       tokens.forEach(tok => {
         if (tok.isSpace) {
           diffContent.appendChild(document.createTextNode(tok.text));
