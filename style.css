@@ -48,7 +48,6 @@ body {
   color: var(--text);
   line-height: 1.5;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
 button {
@@ -179,6 +178,13 @@ input {
   color: var(--bg);
 }
 
+.dropdown-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
 .search-wrapper {
   margin-left: auto;
   flex-shrink: 0;
@@ -211,7 +217,8 @@ input {
 
 /* === Data Table === */
 .data-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
   margin-top: 8px;
 }

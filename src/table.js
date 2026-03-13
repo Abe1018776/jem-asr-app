@@ -6,6 +6,9 @@ let currentFilter = 'all';
 let currentSort = { column: null, dir: 'asc' };
 let currentPage = 1;
 let searchTerm = '';
+let filterYear = '';
+let filterMonth = '';
+let filterType = '';
 let selectedIds = new Set();
 const PAGE_SIZE = 50;
 
@@ -74,6 +77,7 @@ function getRowData(audio) {
     id,
     name: audio.name || '',
     year: audio.year || '',
+    month: audio.month || '',
     type: audio.type || '',
     estMinutes: audio.estMinutes != null ? audio.estMinutes + ' min' : '',
     firstLine: transcript ? truncateWords(transcript.firstLine || '', 15) : '',
@@ -88,6 +92,9 @@ function getRowData(audio) {
 }
 
 function matchesSearch(row) {
+  if (filterYear && row.year !== filterYear) return false;
+  if (filterMonth && row.month !== filterMonth) return false;
+  if (filterType && row.type !== filterType) return false;
   if (!searchTerm) return true;
   const term = searchTerm.toLowerCase();
   return (
@@ -95,6 +102,52 @@ function matchesSearch(row) {
     row.transcript.toLowerCase().includes(term) ||
     row.firstLine.toLowerCase().includes(term)
   );
+}
+
+function populateDropdownFilters() {
+  const state = getState();
+  if (!state || !state.audio) return;
+
+  const years = new Set();
+  const months = new Set();
+  const types = new Set();
+
+  state.audio.forEach(a => {
+    if (a.year) years.add(a.year);
+    if (a.month) months.add(a.month);
+    if (a.type) types.add(a.type);
+  });
+
+  const yearSelect = document.getElementById('filter-year');
+  const monthSelect = document.getElementById('filter-month');
+  const typeSelect = document.getElementById('filter-type');
+
+  if (yearSelect && yearSelect.options.length <= 1) {
+    [...years].sort().forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    });
+  }
+
+  if (monthSelect && monthSelect.options.length <= 1) {
+    [...months].sort().forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      monthSelect.appendChild(opt);
+    });
+  }
+
+  if (typeSelect && typeSelect.options.length <= 1) {
+    [...types].sort().forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      typeSelect.appendChild(opt);
+    });
+  }
 }
 
 function sortRows(rows) {
@@ -434,6 +487,33 @@ function renderTable(container, options = {}) {
     });
   });
 
+  // Wire dropdown filters
+  const yearSelect = document.getElementById('filter-year');
+  const monthSelect = document.getElementById('filter-month');
+  const typeSelect = document.getElementById('filter-type');
+
+  if (yearSelect) {
+    yearSelect.addEventListener('change', () => {
+      filterYear = yearSelect.value;
+      currentPage = 1;
+      updateTable();
+    });
+  }
+  if (monthSelect) {
+    monthSelect.addEventListener('change', () => {
+      filterMonth = monthSelect.value;
+      currentPage = 1;
+      updateTable();
+    });
+  }
+  if (typeSelect) {
+    typeSelect.addEventListener('change', () => {
+      filterType = typeSelect.value;
+      currentPage = 1;
+      updateTable();
+    });
+  }
+
   // Wire search
   const searchInput = document.getElementById('search-input');
   if (searchInput) {
@@ -446,6 +526,9 @@ function renderTable(container, options = {}) {
       debouncedSearch(e.target.value);
     });
   }
+
+  // Populate dropdown filters from data
+  populateDropdownFilters();
 
   updateTable();
 }
