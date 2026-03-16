@@ -1,0 +1,557 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 1800" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="gInit" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="gMap" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+    <linearGradient id="gClean" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="gAlign" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="gReview" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="gKaraoke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#db2777"/>
+    </linearGradient>
+    <linearGradient id="gBench" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="gExport" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <filter id="sh">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-opacity="0.35"/>
+    </filter>
+    <marker id="aDown" markerWidth="12" markerHeight="8" refX="6" refY="8" orient="auto">
+      <polygon points="0 0, 12 0, 6 8" fill="#475569"/>
+    </marker>
+    <marker id="aRight" markerWidth="8" markerHeight="12" refX="8" refY="6" orient="auto">
+      <polygon points="0 0, 8 6, 0 12" fill="#475569"/>
+    </marker>
+    <marker id="aCyan" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#06b6d4"/>
+    </marker>
+    <marker id="aAmber" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
+    </marker>
+    <marker id="aGreen" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#10b981"/>
+    </marker>
+    <marker id="aPurple" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8b5cf6"/>
+    </marker>
+    <marker id="aBlue" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3b82f6"/>
+    </marker>
+    <marker id="aPink" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ec4899"/>
+    </marker>
+    <marker id="aOrange" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f97316"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1500" height="1800" fill="url(#bg)" rx="12"/>
+
+  <!-- Title -->
+  <text x="750" y="45" text-anchor="middle" fill="#f8fafc" font-size="28" font-weight="700" letter-spacing="1">JEM Yiddish ASR Workbench — User Experience Flow</text>
+  <text x="750" y="70" text-anchor="middle" fill="#94a3b8" font-size="14">Complete workflow from raw audio archive to training-ready dataset</text>
+
+  <!-- ═══════════════ PHASE 1: INITIALIZATION ═══════════════ -->
+  <rect x="40" y="95" width="1420" height="195" rx="14" fill="#0f172a" stroke="#06b6d4" stroke-width="2" filter="url(#sh)"/>
+  <rect x="40" y="95" width="1420" height="40" rx="14" fill="url(#gInit)"/>
+  <rect x="40" y="121" width="1420" height="14" fill="url(#gInit)"/>
+  <circle cx="70" cy="115" r="14" fill="#083344" stroke="#22d3ee" stroke-width="2"/>
+  <text x="70" y="120" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">1</text>
+  <text x="95" y="121" fill="#fff" font-size="16" font-weight="700">APP INITIALIZATION — User opens index.html</text>
+
+  <!-- Init steps -->
+  <rect x="60" y="148" width="220" height="55" rx="8" fill="#083344" stroke="#22d3ee" stroke-width="1"/>
+  <text x="170" y="168" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="600">Fetch data.json (7.1 MB)</text>
+  <text x="170" y="184" text-anchor="middle" fill="#94a3b8" font-size="9">4,669 audio + 1,065 transcripts</text>
+  <text x="170" y="196" text-anchor="middle" fill="#94a3b8" font-size="9">All metadata pre-computed</text>
+
+  <line x1="282" y1="175" x2="310" y2="175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aCyan)"/>
+
+  <rect x="312" y="148" width="220" height="55" rx="8" fill="#083344" stroke="#22d3ee" stroke-width="1"/>
+  <text x="422" y="168" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="600">Load localStorage State</text>
+  <text x="422" y="184" text-anchor="middle" fill="#94a3b8" font-size="9">Restore mappings, cleaning,</text>
+  <text x="422" y="196" text-anchor="middle" fill="#94a3b8" font-size="9">alignments, reviews, benchmarks</text>
+
+  <line x1="534" y1="175" x2="562" y2="175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aCyan)"/>
+
+  <rect x="564" y="148" width="220" height="55" rx="8" fill="#083344" stroke="#22d3ee" stroke-width="1"/>
+  <text x="674" y="168" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="600">Identify Special Files</text>
+  <text x="674" y="184" text-anchor="middle" fill="#94a3b8" font-size="9">5 benchmark (locked gold std)</text>
+  <text x="674" y="196" text-anchor="middle" fill="#94a3b8" font-size="9">423 fifty-hour training set</text>
+
+  <line x1="786" y1="175" x2="814" y2="175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aCyan)"/>
+
+  <rect x="816" y="148" width="310" height="55" rx="8" fill="#083344" stroke="#22d3ee" stroke-width="1"/>
+  <text x="971" y="168" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="600">Render Workbench UI</text>
+  <text x="971" y="184" text-anchor="middle" fill="#94a3b8" font-size="9">Header toolbar · Filter bar with count badges</text>
+  <text x="971" y="196" text-anchor="middle" fill="#94a3b8" font-size="9">Main table · Bulk action bar · Dark theme + RTL</text>
+
+  <line x1="1128" y1="175" x2="1156" y2="175" stroke="#22d3ee" stroke-width="1.5" marker-end="url(#aCyan)"/>
+
+  <rect x="1158" y="148" width="280" height="55" rx="8" fill="#083344" stroke="#22d3ee" stroke-width="1"/>
+  <text x="1298" y="168" text-anchor="middle" fill="#67e8f9" font-size="11" font-weight="600">Table Ready</text>
+  <text x="1298" y="184" text-anchor="middle" fill="#94a3b8" font-size="9">Columns: Checkbox · # · Audio Name · Year</text>
+  <text x="1298" y="196" text-anchor="middle" fill="#94a3b8" font-size="9">First 15 Words · Transcript · Status · Actions</text>
+
+  <!-- Filters detail -->
+  <rect x="60" y="210" width="1380" height="30" rx="5" fill="#0c4a6e" stroke="#0ea5e9" stroke-width="0.5"/>
+  <text x="80" y="230" fill="#7dd3fc" font-size="10" font-weight="600">Filter Bar:</text>
+  <rect x="155" y="215" width="55" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="182" y="229" text-anchor="middle" fill="#67e8f9" font-size="9" font-weight="600">All</text>
+  <rect x="218" y="215" width="90" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="263" y="229" text-anchor="middle" fill="#67e8f9" font-size="9">Unmapped</text>
+  <rect x="316" y="215" width="72" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="352" y="229" text-anchor="middle" fill="#67e8f9" font-size="9">Mapped</text>
+  <rect x="396" y="215" width="90" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="441" y="229" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="600">50-Hour</text>
+  <rect x="494" y="215" width="78" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="533" y="229" text-anchor="middle" fill="#67e8f9" font-size="9">Cleaned</text>
+  <rect x="580" y="215" width="75" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="617" y="229" text-anchor="middle" fill="#67e8f9" font-size="9">Aligned</text>
+  <rect x="663" y="215" width="85" height="20" rx="4" fill="#164e63" stroke="#22d3ee" stroke-width="1"/>
+  <text x="705" y="229" text-anchor="middle" fill="#67e8f9" font-size="9">Approved</text>
+  <rect x="756" y="215" width="95" height="20" rx="4" fill="#164e63" stroke="#ef4444" stroke-width="1"/>
+  <text x="803" y="229" text-anchor="middle" fill="#fca5a5" font-size="9">Benchmark</text>
+
+  <text x="880" y="229" fill="#64748b" font-size="9">+ Year / Month / Type dropdowns + Free-text search · 50 rows/page with pagination</text>
+
+  <!-- Down arrow to Phase 2 -->
+  <line x1="750" y1="290" x2="750" y2="315" stroke="#475569" stroke-width="2" marker-end="url(#aDown)"/>
+
+  <!-- ═══════════════ PHASE 2: MAPPING ═══════════════ -->
+  <rect x="40" y="318" width="700" height="260" rx="14" fill="#0f172a" stroke="#f59e0b" stroke-width="2" filter="url(#sh)"/>
+  <rect x="40" y="318" width="700" height="40" rx="14" fill="url(#gMap)"/>
+  <rect x="40" y="344" width="700" height="14" fill="url(#gMap)"/>
+  <circle cx="70" cy="338" r="14" fill="#78350f" stroke="#fbbf24" stroke-width="2"/>
+  <text x="70" y="343" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">2</text>
+  <text x="95" y="344" fill="#fff" font-size="16" font-weight="700">MAPPING — Link Audio to Transcript</text>
+  <text x="580" y="344" fill="#fef3c7" font-size="11">Filter: "Unmapped" (2,860 files)</text>
+
+  <!-- Mapping flow -->
+  <rect x="60" y="370" width="200" height="65" rx="8" fill="#78350f" stroke="#fbbf24" stroke-width="1"/>
+  <text x="160" y="390" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="600">Select Unmapped Row</text>
+  <text x="160" y="406" text-anchor="middle" fill="#94a3b8" font-size="9">Row expands inline below</text>
+  <text x="160" y="420" text-anchor="middle" fill="#94a3b8" font-size="9">showing suggested matches</text>
+
+  <line x1="262" y1="402" x2="290" y2="402" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aAmber)"/>
+
+  <rect x="292" y="370" width="210" height="65" rx="8" fill="#78350f" stroke="#fbbf24" stroke-width="1"/>
+  <text x="397" y="388" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="600">Suggested Matches (Top 5)</text>
+  <text x="397" y="404" text-anchor="middle" fill="#94a3b8" font-size="9">Confidence % · Match reason</text>
+  <text x="397" y="420" text-anchor="middle" fill="#94a3b8" font-size="9">Transcript name · First 15 words</text>
+
+  <line x1="504" y1="402" x2="532" y2="402" stroke="#fbbf24" stroke-width="1.5" marker-end="url(#aAmber)"/>
+
+  <rect x="534" y="370" width="185" height="65" rx="8" fill="#422006" stroke="#f59e0b" stroke-width="1.5"/>
+  <text x="626" y="390" text-anchor="middle" fill="#fde68a" font-size="11" font-weight="600">Click to Link</text>
+  <text x="626" y="406" text-anchor="middle" fill="#94a3b8" font-size="9">Status: unmapped to mapped</text>
+  <text x="626" y="420" text-anchor="middle" fill="#10b981" font-size="9" font-weight="600">Row moves to "Mapped" filter</text>
+
+  <!-- Matching algorithm -->
+  <rect x="60" y="448" width="660" height="62" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="80" y="468" fill="#fbbf24" font-size="11" font-weight="700">Matching Algorithm (mapping.js)</text>
+  <text x="80" y="484" fill="#94a3b8" font-size="9">Exact date = 1.0 · Year+Month = 0.5 · Year only = 0.25 · Keyword boost (Sicha/Maamar/Farbrengen) = +0.15</text>
+  <text x="80" y="498" fill="#94a3b8" font-size="9">Extracts Hebrew dates from filenames · Compares against all transcripts · Returns top 5 by confidence descending</text>
+
+  <!-- Search modal note -->
+  <rect x="60" y="520" width="660" height="42" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="80" y="540" fill="#94a3b8" font-size="10">Alternative: "Search..." button opens full search modal — searchable list of all unlinked transcripts with year/month/type filters</text>
+  <text x="80" y="554" fill="#64748b" font-size="9">Unlink: Click X button on mapped row to disconnect and revert to unmapped status</text>
+
+  <!-- ═══════════════ PHASE 3: CLEANING ═══════════════ -->
+  <rect x="760" y="318" width="700" height="260" rx="14" fill="#0f172a" stroke="#10b981" stroke-width="2" filter="url(#sh)"/>
+  <rect x="760" y="318" width="700" height="40" rx="14" fill="url(#gClean)"/>
+  <rect x="760" y="344" width="700" height="14" fill="url(#gClean)"/>
+  <circle cx="790" cy="338" r="14" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+  <text x="790" y="343" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">3</text>
+  <text x="815" y="344" fill="#fff" font-size="16" font-weight="700">CLEANING — Remove Non-Speech Content</text>
+
+  <!-- Cleaning flow -->
+  <rect x="780" y="370" width="200" height="55" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1"/>
+  <text x="880" y="392" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="600">Select Mapped Rows</text>
+  <text x="880" y="408" text-anchor="middle" fill="#94a3b8" font-size="9">Click "Clean Selected" button</text>
+
+  <line x1="982" y1="397" x2="1010" y2="397" stroke="#34d399" stroke-width="1.5" marker-end="url(#aGreen)"/>
+
+  <rect x="1012" y="370" width="220" height="55" rx="8" fill="#064e3b" stroke="#34d399" stroke-width="1"/>
+  <text x="1122" y="392" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="600">5-Pass Regex Pipeline</text>
+  <text x="1122" y="408" text-anchor="middle" fill="#94a3b8" font-size="9">Automatic batch processing</text>
+
+  <line x1="1234" y1="397" x2="1262" y2="397" stroke="#34d399" stroke-width="1.5" marker-end="url(#aGreen)"/>
+
+  <rect x="1264" y="370" width="176" height="55" rx="8" fill="#022c22" stroke="#10b981" stroke-width="1.5"/>
+  <text x="1352" y="392" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="600">Status: Cleaned</text>
+  <text x="1352" y="408" text-anchor="middle" fill="#94a3b8" font-size="9">Clean Rate: X% retained</text>
+
+  <!-- 5 passes detail -->
+  <rect x="780" y="438" width="660" height="125" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="800" y="458" fill="#34d399" font-size="11" font-weight="700">5-Pass Regex Cleaning (cleaning.js)</text>
+
+  <rect x="795" y="468" width="120" height="28" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="0.5"/>
+  <text x="855" y="487" text-anchor="middle" fill="#6ee7b7" font-size="9" font-weight="600">1. Brackets</text>
+
+  <text x="920" y="486" fill="#475569" font-size="12">&#x2192;</text>
+
+  <rect x="935" y="468" width="130" height="28" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="0.5"/>
+  <text x="1000" y="487" text-anchor="middle" fill="#6ee7b7" font-size="9" font-weight="600">2. Parentheses</text>
+
+  <text x="1070" y="486" fill="#475569" font-size="12">&#x2192;</text>
+
+  <rect x="1080" y="468" width="135" height="28" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="0.5"/>
+  <text x="1147" y="487" text-anchor="middle" fill="#6ee7b7" font-size="9" font-weight="600">3. Section Markers</text>
+
+  <text x="1220" y="486" fill="#475569" font-size="12">&#x2192;</text>
+
+  <rect x="1230" y="468" width="110" height="28" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="0.5"/>
+  <text x="1285" y="487" text-anchor="middle" fill="#6ee7b7" font-size="9" font-weight="600">4. Special Chars</text>
+
+  <text x="1345" y="486" fill="#475569" font-size="12">&#x2192;</text>
+
+  <rect x="1350" y="468" width="80" height="28" rx="5" fill="#064e3b" stroke="#34d399" stroke-width="0.5"/>
+  <text x="1390" y="487" text-anchor="middle" fill="#6ee7b7" font-size="9" font-weight="600">5. Whitespace</text>
+
+  <text x="800" y="516" fill="#94a3b8" font-size="9">Remove [editorial notes] · Remove (annotations) · Strip section markers + numbering</text>
+  <text x="800" y="530" fill="#94a3b8" font-size="9">Normalize zero-width spaces, smart quotes, Unicode · Collapse whitespace + blank lines</text>
+  <text x="800" y="548" fill="#fbbf24" font-size="10" font-weight="600">Clean Rate = (cleaned words / original words) x 100%</text>
+
+  <!-- Down arrow -->
+  <line x1="750" y1="578" x2="750" y2="608" stroke="#475569" stroke-width="2" marker-end="url(#aDown)"/>
+
+  <!-- ═══════════════ PHASE 4: ALIGNMENT ═══════════════ -->
+  <rect x="40" y="612" width="1420" height="235" rx="14" fill="#0f172a" stroke="#8b5cf6" stroke-width="2" filter="url(#sh)"/>
+  <rect x="40" y="612" width="1420" height="40" rx="14" fill="url(#gAlign)"/>
+  <rect x="40" y="638" width="1420" height="14" fill="url(#gAlign)"/>
+  <circle cx="70" cy="632" r="14" fill="#2e1065" stroke="#a78bfa" stroke-width="2"/>
+  <text x="70" y="637" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">4</text>
+  <text x="95" y="638" fill="#fff" font-size="16" font-weight="700">ALIGNMENT — GPU Word-Level Timestamps</text>
+  <text x="565" y="638" fill="#ede9fe" font-size="11">Filter: "Cleaned" rows</text>
+
+  <!-- Alignment flow -->
+  <rect x="60" y="665" width="170" height="65" rx="8" fill="#2e1065" stroke="#a78bfa" stroke-width="1"/>
+  <text x="145" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">Select Cleaned Rows</text>
+  <text x="145" y="701" text-anchor="middle" fill="#94a3b8" font-size="9">Click "Align Selected"</text>
+  <text x="145" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">Bulk operation</text>
+
+  <line x1="232" y1="697" x2="260" y2="697" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aPurple)"/>
+
+  <rect x="262" y="665" width="195" height="65" rx="8" fill="#2e1065" stroke="#a78bfa" stroke-width="1"/>
+  <text x="359" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">Fetch Audio from R2</text>
+  <text x="359" y="701" text-anchor="middle" fill="#94a3b8" font-size="9">via /api/audio Worker proxy</text>
+  <text x="359" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">Convert to base64 in browser</text>
+
+  <line x1="459" y1="697" x2="487" y2="697" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aPurple)"/>
+
+  <rect x="489" y="665" width="230" height="65" rx="8" fill="#2e1065" stroke="#a78bfa" stroke-width="1"/>
+  <text x="604" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">POST to RunPod GPU</text>
+  <text x="604" y="701" text-anchor="middle" fill="#94a3b8" font-size="9">align.kohnai.ai/api/align</text>
+  <text x="604" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">{ mode:"align", audio_base64, text, lang:"yi" }</text>
+
+  <line x1="721" y1="697" x2="749" y2="697" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aPurple)"/>
+
+  <rect x="751" y="665" width="225" height="65" rx="8" fill="#2e1065" stroke="#a78bfa" stroke-width="1"/>
+  <text x="863" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">Parse Word Timestamps</text>
+  <text x="863" y="701" text-anchor="middle" fill="#94a3b8" font-size="9">{ word, start, end, confidence }</text>
+  <text x="863" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">yi-whisper-large-v3-turbo-ct2</text>
+
+  <line x1="978" y1="697" x2="1006" y2="697" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aPurple)"/>
+
+  <rect x="1008" y="665" width="200" height="65" rx="8" fill="#2e1065" stroke="#a78bfa" stroke-width="1"/>
+  <text x="1108" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="600">Compute Confidence</text>
+  <text x="1108" y="701" text-anchor="middle" fill="#94a3b8" font-size="9">Avg confidence (mean all words)</text>
+  <text x="1108" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">Low confidence count (&lt; 40%)</text>
+
+  <line x1="1210" y1="697" x2="1238" y2="697" stroke="#a78bfa" stroke-width="1.5" marker-end="url(#aPurple)"/>
+
+  <rect x="1240" y="665" width="200" height="65" rx="8" fill="#1e1065" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="1340" y="685" text-anchor="middle" fill="#c4b5fd" font-size="11" font-weight="700">Status: Aligned</text>
+  <text x="1340" y="701" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">Ready for human review</text>
+  <text x="1340" y="715" text-anchor="middle" fill="#94a3b8" font-size="9">Word-level data stored</text>
+
+  <!-- Cold start warning -->
+  <rect x="60" y="745" width="1380" height="35" rx="6" fill="#1e293b" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="80" y="767" fill="#fbbf24" font-size="10" font-weight="600">Cold Start Warning:</text>
+  <text x="230" y="767" fill="#94a3b8" font-size="10">First alignment call takes ~2.5 minutes while GPU scales from zero. Progress shows "GPU warming up (00:45 elapsed)". Subsequent calls ~0.5-1 sec.</text>
+
+  <!-- Confidence color legend -->
+  <rect x="60" y="790" width="1380" height="38" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="80" y="815" fill="#94a3b8" font-size="10" font-weight="600">Confidence Colors:</text>
+  <rect x="220" y="800" width="14" height="14" rx="3" fill="#10b981"/>
+  <text x="240" y="813" fill="#6ee7b7" font-size="10">&#x2265; 80% High</text>
+  <rect x="340" y="800" width="14" height="14" rx="3" fill="#f59e0b"/>
+  <text x="360" y="813" fill="#fbbf24" font-size="10">40-79% Medium (spot-check)</text>
+  <rect x="530" y="800" width="14" height="14" rx="3" fill="#ef4444"/>
+  <text x="550" y="813" fill="#fca5a5" font-size="10">&lt; 40% Low (must review)</text>
+  <text x="730" y="813" fill="#64748b" font-size="9">These colors guide the reviewer's attention in the next phase</text>
+
+  <!-- Down arrow -->
+  <line x1="750" y1="847" x2="750" y2="877" stroke="#475569" stroke-width="2" marker-end="url(#aDown)"/>
+
+  <!-- ═══════════════ PHASE 5: REVIEW ═══════════════ -->
+  <rect x="40" y="880" width="900" height="370" rx="14" fill="#0f172a" stroke="#3b82f6" stroke-width="2" filter="url(#sh)"/>
+  <rect x="40" y="880" width="900" height="40" rx="14" fill="url(#gReview)"/>
+  <rect x="40" y="906" width="900" height="14" fill="url(#gReview)"/>
+  <circle cx="70" cy="900" r="14" fill="#1e3a5f" stroke="#60a5fa" stroke-width="2"/>
+  <text x="70" y="905" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">5</text>
+  <text x="95" y="906" fill="#fff" font-size="16" font-weight="700">REVIEW &amp; APPROVAL — Human Verification</text>
+  <text x="680" y="906" fill="#dbeafe" font-size="11">Filter: "Aligned" or "50-Hour Set"</text>
+
+  <!-- Review panel -->
+  <text x="65" y="942" fill="#93c5fd" font-size="12" font-weight="600">Click table row to expand inline Review Panel:</text>
+
+  <!-- Summary bar -->
+  <rect x="60" y="955" width="860" height="38" rx="6" fill="#172554" stroke="#3b82f6" stroke-width="1"/>
+  <text x="80" y="975" fill="#93c5fd" font-size="10" font-weight="600">Summary Bar</text>
+  <text x="200" y="975" fill="#94a3b8" font-size="10">Audio: 5712-Tishrei-15-Sicha.mp3</text>
+  <text x="480" y="975" fill="#6ee7b7" font-size="10" font-weight="600">Clean Rate: 87%</text>
+  <text x="620" y="975" fill="#fbbf24" font-size="10" font-weight="600">Avg Confidence: 76%</text>
+  <text x="800" y="975" fill="#fca5a5" font-size="10" font-weight="600">Low: 14 words</text>
+
+  <!-- Two-column diff -->
+  <rect x="60" y="1002" width="420" height="120" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="270" y="1022" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Original Text (Left Column)</text>
+  <text x="80" y="1042" fill="#94a3b8" font-size="10">Kept words shown normally</text>
+  <rect x="80" y="1052" width="180" height="18" rx="3" fill="#7f1d1d" stroke="#ef4444" stroke-width="0.5"/>
+  <text x="170" y="1065" text-anchor="middle" fill="#fca5a5" font-size="9">Removed words highlighted red</text>
+  <text x="80" y="1090" fill="#64748b" font-size="9">LCS-based diff algorithm shows what was</text>
+  <text x="80" y="1103" fill="#64748b" font-size="9">removed during cleaning step</text>
+
+  <rect x="500" y="1002" width="420" height="120" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="710" y="1022" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="700">Cleaned Text (Right Column)</text>
+  <text x="520" y="1042" fill="#94a3b8" font-size="10">Words displayed as confidence-colored chips:</text>
+  <!-- Sample chips -->
+  <rect x="520" y="1052" width="40" height="20" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <text x="540" y="1066" text-anchor="middle" fill="#6ee7b7" font-size="9">0.92</text>
+  <rect x="568" y="1052" width="40" height="20" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <text x="588" y="1066" text-anchor="middle" fill="#6ee7b7" font-size="9">0.88</text>
+  <rect x="616" y="1052" width="40" height="20" rx="4" fill="#78350f" stroke="#f59e0b" stroke-width="1"/>
+  <text x="636" y="1066" text-anchor="middle" fill="#fbbf24" font-size="9">0.55</text>
+  <rect x="664" y="1052" width="40" height="20" rx="4" fill="#7f1d1d" stroke="#ef4444" stroke-width="1"/>
+  <text x="684" y="1066" text-anchor="middle" fill="#fca5a5" font-size="9">0.18</text>
+  <rect x="712" y="1052" width="40" height="20" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="1"/>
+  <text x="732" y="1066" text-anchor="middle" fill="#6ee7b7" font-size="9">0.95</text>
+  <text x="520" y="1092" fill="#94a3b8" font-size="9">Click any word chip to inline edit (contentEditable)</text>
+  <text x="520" y="1105" fill="#94a3b8" font-size="9">Add back removed words, fix typos, delete errors</text>
+
+  <!-- Action buttons -->
+  <rect x="60" y="1132" width="860" height="48" rx="8" fill="#172554" stroke="#3b82f6" stroke-width="1"/>
+  <text x="80" y="1152" fill="#93c5fd" font-size="10" font-weight="600">Actions:</text>
+
+  <rect x="145" y="1140" width="90" height="28" rx="6" fill="#064e3b" stroke="#10b981" stroke-width="1.5"/>
+  <text x="190" y="1158" text-anchor="middle" fill="#6ee7b7" font-size="11" font-weight="700">Approve</text>
+
+  <rect x="245" y="1140" width="80" height="28" rx="6" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.5"/>
+  <text x="285" y="1158" text-anchor="middle" fill="#fca5a5" font-size="11" font-weight="700">Reject</text>
+
+  <rect x="335" y="1140" width="65" height="28" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+  <text x="367" y="1158" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Skip</text>
+
+  <text x="430" y="1156" fill="#64748b" font-size="9">Keyboard: Enter=Approve · S=Skip · R=Reject · E=Edit · Up/Down=Navigate</text>
+  <text x="430" y="1170" fill="#64748b" font-size="9">Bulk: Select All + "Approve All Selected" for high-confidence batches</text>
+
+  <!-- Status state machine -->
+  <rect x="60" y="1190" width="860" height="42" rx="6" fill="#0f172a" stroke="#3b82f6" stroke-width="1"/>
+  <text x="80" y="1210" fill="#93c5fd" font-size="10" font-weight="600">State Machine:</text>
+  <text x="200" y="1210" fill="#f59e0b" font-size="10">unmapped</text>
+  <text x="270" y="1210" fill="#475569" font-size="10">&#x2192;</text>
+  <text x="290" y="1210" fill="#f59e0b" font-size="10">mapped</text>
+  <text x="340" y="1210" fill="#475569" font-size="10">&#x2192;</text>
+  <text x="360" y="1210" fill="#10b981" font-size="10">cleaned</text>
+  <text x="418" y="1210" fill="#475569" font-size="10">&#x2192;</text>
+  <text x="438" y="1210" fill="#8b5cf6" font-size="10">aligned</text>
+  <text x="493" y="1210" fill="#475569" font-size="10">&#x2192;</text>
+  <text x="513" y="1210" fill="#3b82f6" font-size="10" font-weight="600">reviewed</text>
+  <text x="575" y="1210" fill="#475569" font-size="10">&#x2192;</text>
+  <text x="595" y="1210" fill="#10b981" font-size="10" font-weight="700">approved</text>
+  <text x="670" y="1210" fill="#94a3b8" font-size="9">(Reject reverts to "aligned")</text>
+  <text x="80" y="1225" fill="#64748b" font-size="9">Each stage is reversible. Unlink reverts to unmapped. All state persisted to localStorage after every mutation.</text>
+
+  <!-- ═══════════════ PHASE 6: KARAOKE PLAYER ═══════════════ -->
+  <rect x="960" y="880" width="500" height="180" rx="14" fill="#0f172a" stroke="#ec4899" stroke-width="2" filter="url(#sh)"/>
+  <rect x="960" y="880" width="500" height="40" rx="14" fill="url(#gKaraoke)"/>
+  <rect x="960" y="906" width="500" height="14" fill="url(#gKaraoke)"/>
+  <circle cx="990" cy="900" r="14" fill="#4a1942" stroke="#f472b6" stroke-width="2"/>
+  <text x="990" y="905" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">6</text>
+  <text x="1015" y="906" fill="#fff" font-size="16" font-weight="700">KARAOKE PLAYER</text>
+
+  <rect x="980" y="932" width="460" height="50" rx="8" fill="#4a1942" stroke="#f472b6" stroke-width="1"/>
+  <text x="1210" y="952" text-anchor="middle" fill="#fbcfe8" font-size="11" font-weight="600">HTML5 Audio + Synchronized Word Grid (RTL)</text>
+  <text x="1210" y="970" text-anchor="middle" fill="#94a3b8" font-size="9">Words highlight in real-time as audio plays · Click word to seek · Confidence colors</text>
+
+  <rect x="980" y="992" width="220" height="34" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="1090" y="1014" text-anchor="middle" fill="#94a3b8" font-size="10">Speed: 0.5x · 1x · 1.5x · 2x</text>
+
+  <rect x="1210" y="992" width="230" height="34" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="1325" y="1014" text-anchor="middle" fill="#94a3b8" font-size="10">Export: SRT / VTT subtitle files</text>
+
+  <text x="980" y="1050" fill="#64748b" font-size="9">Trigger: Click "Play" on aligned row · Groups words into 5s segments or by 0.5s pauses</text>
+
+  <!-- ═══════════════ PHASE 7: BENCHMARK ═══════════════ -->
+  <rect x="960" y="1072" width="500" height="180" rx="14" fill="#0f172a" stroke="#ef4444" stroke-width="2" filter="url(#sh)"/>
+  <rect x="960" y="1072" width="500" height="40" rx="14" fill="url(#gBench)"/>
+  <rect x="960" y="1098" width="500" height="14" fill="url(#gBench)"/>
+  <circle cx="990" cy="1092" r="14" fill="#7f1d1d" stroke="#fca5a5" stroke-width="2"/>
+  <text x="990" y="1097" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">7</text>
+  <text x="1015" y="1098" fill="#fff" font-size="16" font-weight="700">BENCHMARK — ASR Model Comparison</text>
+
+  <rect x="980" y="1122" width="460" height="48" rx="8" fill="#7f1d1d" stroke="#fca5a5" stroke-width="1"/>
+  <text x="1210" y="1142" text-anchor="middle" fill="#fecaca" font-size="11" font-weight="600">5 Gold Standard Files (Locked, Never in Training Set)</text>
+  <text x="1210" y="1158" text-anchor="middle" fill="#94a3b8" font-size="9">Configure ASR models: OpenAI Whisper · YiddishLabs · Google Gemini · Custom endpoints</text>
+
+  <rect x="980" y="1180" width="460" height="58" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="1000" y="1200" fill="#fca5a5" font-size="10" font-weight="600">WER = (Substitutions + Insertions + Deletions) / Reference Words</text>
+  <text x="1000" y="1216" fill="#94a3b8" font-size="9">CER = character-level error rate · Custom WER excludes spelling variants</text>
+  <text x="1000" y="1230" fill="#94a3b8" font-size="9">Yiddish normalization: strip nikkud (U+0591-U+05C7), punctuation, lowercase Latin</text>
+
+  <!-- Down arrow -->
+  <line x1="500" y1="1250" x2="500" y2="1280" stroke="#475569" stroke-width="2" marker-end="url(#aDown)"/>
+
+  <!-- ═══════════════ PHASE 8: EXPORT ═══════════════ -->
+  <rect x="40" y="1283" width="1420" height="190" rx="14" fill="#0f172a" stroke="#f97316" stroke-width="2" filter="url(#sh)"/>
+  <rect x="40" y="1283" width="1420" height="40" rx="14" fill="url(#gExport)"/>
+  <rect x="40" y="1309" width="1420" height="14" fill="url(#gExport)"/>
+  <circle cx="70" cy="1303" r="14" fill="#7c2d12" stroke="#fb923c" stroke-width="2"/>
+  <text x="70" y="1308" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">8</text>
+  <text x="95" y="1309" fill="#fff" font-size="16" font-weight="700">DATA EXPORT &amp; STATE MANAGEMENT</text>
+
+  <rect x="60" y="1335" width="320" height="70" rx="8" fill="#7c2d12" stroke="#fb923c" stroke-width="1"/>
+  <text x="220" y="1358" text-anchor="middle" fill="#fdba74" font-size="12" font-weight="700">Export State (JSON)</text>
+  <text x="220" y="1375" text-anchor="middle" fill="#94a3b8" font-size="9">Full state snapshot: mappings, cleaning,</text>
+  <text x="220" y="1389" text-anchor="middle" fill="#94a3b8" font-size="9">alignments, reviews, benchmarks (no API keys)</text>
+
+  <rect x="400" y="1335" width="320" height="70" rx="8" fill="#7c2d12" stroke="#fb923c" stroke-width="1"/>
+  <text x="560" y="1358" text-anchor="middle" fill="#fdba74" font-size="12" font-weight="700">Import State (JSON)</text>
+  <text x="560" y="1375" text-anchor="middle" fill="#94a3b8" font-size="9">Upload previously exported JSON</text>
+  <text x="560" y="1389" text-anchor="middle" fill="#94a3b8" font-size="9">Merges with current state (non-destructive)</text>
+
+  <rect x="740" y="1335" width="320" height="70" rx="8" fill="#7c2d12" stroke="#fb923c" stroke-width="1"/>
+  <text x="900" y="1358" text-anchor="middle" fill="#fdba74" font-size="12" font-weight="700">Export Approved CSV</text>
+  <text x="900" y="1375" text-anchor="middle" fill="#94a3b8" font-size="9">Training-ready rows: audio name, transcript,</text>
+  <text x="900" y="1389" text-anchor="middle" fill="#94a3b8" font-size="9">year, month, status metadata for model training</text>
+
+  <rect x="1080" y="1335" width="360" height="70" rx="8" fill="#422006" stroke="#f97316" stroke-width="1.5"/>
+  <text x="1260" y="1358" text-anchor="middle" fill="#fdba74" font-size="12" font-weight="700">Export Subtitles (SRT / VTT)</text>
+  <text x="1260" y="1375" text-anchor="middle" fill="#94a3b8" font-size="9">Word-level timestamps grouped into segments</text>
+  <text x="1260" y="1389" text-anchor="middle" fill="#94a3b8" font-size="9">5-second chunks or by &gt;0.5s pause gaps</text>
+
+  <!-- detail.html -->
+  <rect x="60" y="1418" width="1380" height="40" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="80" y="1442" fill="#94a3b8" font-size="10" font-weight="600">Advanced Editing:</text>
+  <text x="200" y="1442" fill="#64748b" font-size="10">detail.html?id=audioId — Opens in new window with transcript versioning, line-by-line diff, accept/reject per change, version history, and full karaoke player</text>
+
+  <!-- Down arrow -->
+  <line x1="750" y1="1473" x2="750" y2="1503" stroke="#475569" stroke-width="2" marker-end="url(#aDown)"/>
+
+  <!-- ═══════════════ COMPLETE WORKFLOW SUMMARY ═══════════════ -->
+  <rect x="40" y="1506" width="1420" height="270" rx="14" fill="#0f172a" stroke="#f8fafc" stroke-width="1.5" filter="url(#sh)"/>
+  <text x="750" y="1536" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="700">Complete Workflow Summary</text>
+
+  <!-- Big pipeline -->
+  <rect x="60" y="1555" width="140" height="75" rx="12" fill="#083344" stroke="#22d3ee" stroke-width="2"/>
+  <text x="130" y="1582" text-anchor="middle" fill="#67e8f9" font-size="14" font-weight="700">INIT</text>
+  <text x="130" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">Load 7MB data</text>
+  <text x="130" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Restore state</text>
+
+  <line x1="202" y1="1592" x2="228" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="232" y="1555" width="140" height="75" rx="12" fill="#78350f" stroke="#fbbf24" stroke-width="2"/>
+  <text x="302" y="1582" text-anchor="middle" fill="#fde68a" font-size="14" font-weight="700">MAP</text>
+  <text x="302" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">Audio to Transcript</text>
+  <text x="302" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Date matching</text>
+
+  <line x1="374" y1="1592" x2="400" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="404" y="1555" width="140" height="75" rx="12" fill="#064e3b" stroke="#34d399" stroke-width="2"/>
+  <text x="474" y="1582" text-anchor="middle" fill="#6ee7b7" font-size="14" font-weight="700">CLEAN</text>
+  <text x="474" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">5-pass regex</text>
+  <text x="474" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Strip editorial</text>
+
+  <line x1="546" y1="1592" x2="572" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="576" y="1555" width="140" height="75" rx="12" fill="#2e1065" stroke="#a78bfa" stroke-width="2"/>
+  <text x="646" y="1582" text-anchor="middle" fill="#c4b5fd" font-size="14" font-weight="700">ALIGN</text>
+  <text x="646" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">RunPod GPU</text>
+  <text x="646" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Word timestamps</text>
+
+  <line x1="718" y1="1592" x2="744" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="748" y="1555" width="140" height="75" rx="12" fill="#1e3a5f" stroke="#60a5fa" stroke-width="2"/>
+  <text x="818" y="1582" text-anchor="middle" fill="#93c5fd" font-size="14" font-weight="700">REVIEW</text>
+  <text x="818" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">Human QC</text>
+  <text x="818" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Diff + confidence</text>
+
+  <line x1="890" y1="1592" x2="916" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="920" y="1555" width="150" height="75" rx="12" fill="#064e3b" stroke="#10b981" stroke-width="2.5"/>
+  <text x="995" y="1582" text-anchor="middle" fill="#6ee7b7" font-size="14" font-weight="700">APPROVE</text>
+  <text x="995" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">Mark verified</text>
+  <text x="995" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">Training-ready</text>
+
+  <line x1="1072" y1="1592" x2="1098" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="1102" y="1555" width="140" height="75" rx="12" fill="#7c2d12" stroke="#f97316" stroke-width="2"/>
+  <text x="1172" y="1582" text-anchor="middle" fill="#fdba74" font-size="14" font-weight="700">EXPORT</text>
+  <text x="1172" y="1600" text-anchor="middle" fill="#94a3b8" font-size="9">CSV / JSON</text>
+  <text x="1172" y="1615" text-anchor="middle" fill="#94a3b8" font-size="9">SRT / VTT</text>
+
+  <line x1="1244" y1="1592" x2="1270" y2="1592" stroke="#475569" stroke-width="2.5" marker-end="url(#aRight)"/>
+
+  <rect x="1274" y="1555" width="166" height="75" rx="12" fill="#10b981" stroke="#6ee7b7" stroke-width="2.5"/>
+  <text x="1357" y="1578" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">50 HOURS</text>
+  <text x="1357" y="1596" text-anchor="middle" fill="#ecfdf5" font-size="10">Yiddish ASR</text>
+  <text x="1357" y="1612" text-anchor="middle" fill="#ecfdf5" font-size="10">Training Data</text>
+  <text x="1357" y="1625" text-anchor="middle" fill="#d1fae5" font-size="9">READY</text>
+
+  <!-- Key UX features -->
+  <text x="60" y="1660" fill="#94a3b8" font-size="12" font-weight="600">Key UX Features</text>
+
+  <rect x="60" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="147" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">No Auth Required</text>
+
+  <rect x="245" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="332" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Dark Theme + RTL</text>
+
+  <rect x="430" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="517" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Confidence-Guided QC</text>
+
+  <rect x="615" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="702" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Inline Word Editing</text>
+
+  <rect x="800" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="887" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Keyboard Shortcuts</text>
+
+  <rect x="985" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="1072" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Bulk Operations</text>
+
+  <rect x="1170" y="1672" width="175" height="28" rx="5" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="1257" y="1690" text-anchor="middle" fill="#94a3b8" font-size="9">Real-Time Audio Sync</text>
+
+  <text x="60" y="1722" fill="#64748b" font-size="9">Screens: index.html (main workbench) · detail.html (advanced editing) · Modals: Search, Karaoke Player, ASR Config, Benchmark Results</text>
+  <text x="60" y="1738" fill="#64748b" font-size="9">Persistence: localStorage auto-save after every mutation · JSON export/import for backup and collaboration · No server-side state</text>
+
+  <!-- Footer -->
+  <text x="750" y="1785" text-anchor="middle" fill="#475569" font-size="10">github.com/Abe1018776/jem-asr-app — Lubavitcher Rebbe Farbrengens Archive (1950-1992) — Yiddish ASR Training Data Preparation</text>
+</svg>
