@@ -13,4 +13,24 @@ export default defineConfig({
       },
     },
   },
+  server: {
+    port: 5175,
+    proxy: {
+      '/api/align': {
+        target: 'https://align.kohnai.ai',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/api/audio': {
+        target: 'https://align.kohnai.ai',
+        changeOrigin: true,
+        secure: true,
+      },
+      '/api/transcript': {
+        target: 'https://align.kohnai.ai',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
+  },
 })
