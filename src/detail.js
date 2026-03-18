@@ -721,7 +721,6 @@ function renderWordView(audioId, cleaning, alignment, container, pageContainer, 
       origTokens.forEach(w => { if (!cleanTokens.has(w)) removedWords.add(w); });
     }
 
-    if (words.length > 0) console.log('[WordView] sample words:', words.slice(0, 5));
     words.forEach((w, idx) => {
       const span = document.createElement('span');
       const conf = typeof w.confidence === 'number' ? w.confidence : 1;
