@@ -1,11 +1,19 @@
 import { updateState } from './state.js';
 
 const ALIGN_ENDPOINT = '/api/align';
+const DEBUG_ALIGN = false;
 
 function getAudioUrl(audioId, state) {
   const entry = state.audio.find(a => a.id === audioId);
   if (!entry) return null;
   return entry.r2Link || entry.driveLink || null;
+}
+
+function detectAudioFormat(url) {
+  if (!url) return '.mp3';
+  const clean = String(url).split('?')[0].toLowerCase();
+  const m = clean.match(/\.(mp3|wav|m4a|flac|ogg)$/);
+  return m ? `.${m[1]}` : '.mp3';
 }
 
 function fetchAudioAsBase64(url) {
@@ -40,6 +48,7 @@ export async function alignRow(audioId, state) {
   }
 
   const audioBase64 = await fetchAudioAsBase64(url);
+  const audioFormat = detectAudioFormat(url);
 
   const response = await fetch(ALIGN_ENDPOINT, {
     method: 'POST',
@@ -47,7 +56,7 @@ export async function alignRow(audioId, state) {
     body: JSON.stringify({
       mode: 'align',
       audio_base64: audioBase64,
-      audio_format: '.mp3',
+      audio_format: audioFormat,
       text: cleaningData.cleanedText,
       language: 'yi',
     }),
@@ -59,9 +68,11 @@ export async function alignRow(audioId, state) {
   }
 
   const data = await response.json();
-  console.log('[Align] raw response keys:', Object.keys(data));
-  if (data.timestamps?.[0]) console.log('[Align] sample timestamp:', JSON.stringify(data.timestamps[0]));
-  if (data.segments?.[0]?.words?.[0]) console.log('[Align] sample segment word:', JSON.stringify(data.segments[0].words[0]));
+  if (DEBUG_ALIGN) {
+    console.log('[Align] raw response keys:', Object.keys(data));
+    if (data.timestamps?.[0]) console.log('[Align] sample timestamp:', JSON.stringify(data.timestamps[0]));
+    if (data.segments?.[0]?.words?.[0]) console.log('[Align] sample segment word:', JSON.stringify(data.segments[0].words[0]));
+  }
 
   // Try timestamps first, fall back to flattened segments.words
   let rawWords = data.timestamps || [];
@@ -69,12 +80,22 @@ export async function alignRow(audioId, state) {
     rawWords = data.segments.flatMap(seg => seg.words || []);
   }
 
-  const words = rawWords.map(t => ({
-    word: t.word || t.text || '',
-    start: t.start || 0,
-    end: t.end || 0,
-    confidence: t.confidence ?? t.probability ?? t.score ?? 0,
-  }));
+  const words = rawWords
+    .map(t => {
+      const word = String(t?.word ?? t?.text ?? t?.token ?? '').trim();
+      const start = Number.parseFloat(t?.start ?? 0);
+      const end = Number.parseFloat(t?.end ?? 0);
+      const rawConf = t?.confidence ?? t?.probability ?? t?.score ?? 0;
+      const conf = Number.parseFloat(rawConf);
+      return {
+        word,
+        start: Number.isFinite(start) ? start : 0,
+        end: Number.isFinite(end) ? end : 0,
+        confidence: Number.isFinite(conf) ? conf : 0,
+      };
+    })
+    // Keep tokens that have a word or at least timing
+    .filter(w => w.word.length > 0 || w.start > 0 || w.end > 0);
 
   const totalConf = words.reduce((sum, w) => sum + (w.confidence || 0), 0);
   const avgConfidence = words.length > 0 ? totalConf / words.length : 0;
@@ -111,6 +132,7 @@ export async function batchAlign(audioIds, state, onProgress) {
 
 export async function transcribeAudio(audioId, audioUrl, modelConfig) {
   const audioBase64 = await fetchAudioAsBase64(audioUrl);
+  const audioFormat = detectAudioFormat(audioUrl);
 
   const response = await fetch(modelConfig.endpoint || ALIGN_ENDPOINT, {
     method: 'POST',
@@ -118,7 +140,7 @@ export async function transcribeAudio(audioId, audioUrl, modelConfig) {
     body: JSON.stringify({
       mode: 'transcribe',
       audio_base64: audioBase64,
-      audio_format: '.mp3',
+      audio_format: audioFormat,
       language: 'yi',
       ...(modelConfig.requestTemplate || {}),
     }),
