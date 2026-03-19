@@ -39,14 +39,6 @@ function scoreMatch(audio, transcript) {
     }
   }
 
-  if (score > 0 && audio.type) {
-    const audioType = audio.type.toLowerCase();
-    if (tName.includes(audioType) && !reasons.some(r => CONTENT_TYPES.includes(r))) {
-      score += 0.15;
-      reasons.push(audio.type);
-    }
-  }
-
   return { score: Math.min(score, 1.0), matchReason: reasons.join(' + ') };
 }
 
@@ -73,7 +65,7 @@ export function getSuggestedMatches(audioItem, allTranscripts, existingMappings)
   return scored.slice(0, 5);
 }
 
-export function renderSuggestedMatches(audioId, container, state, onLink) {
+export function renderSuggestedMatches(container, audioId, state, onLink) {
   container.innerHTML = '';
   const audio = state.audio.find(a => a.id === audioId);
   if (!audio) return;
@@ -93,7 +85,7 @@ export function renderSuggestedMatches(audioId, container, state, onLink) {
   for (const s of suggestions) {
     const row = document.createElement('div');
     row.className = 'suggestion-row';
-    row.addEventListener('click', () => onLink(audioId, s.transcriptId));
+    row.addEventListener('click', () => onLink(audioId, s.transcriptId, s.score, s.matchReason));
 
     const badge = document.createElement('span');
     badge.className = 'confidence-badge';
@@ -132,9 +124,16 @@ export function linkMatch(audioId, transcriptId, score, reason) {
 
 export function unlinkMatch(audioId) {
   const state = getState();
-  if (state && state.mappings && state.mappings[audioId]) {
-    delete state.mappings[audioId];
-    updateState('mappings', null, state.mappings);
+  if (!state) return;
+  if (state.mappings && state.mappings[audioId]) {
+    const mappings = { ...state.mappings };
+    delete mappings[audioId];
+    updateState('mappings', null, mappings);
+  }
+  if (state.transcriptVersions && state.transcriptVersions[audioId]) {
+    const versions = { ...state.transcriptVersions };
+    delete versions[audioId];
+    updateState('transcriptVersions', null, versions);
   }
 }
 

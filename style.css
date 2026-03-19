@@ -1828,6 +1828,106 @@ input {
   white-space: pre-wrap;
 }
 
+/* === Inline Audio Name Edit === */
+.audio-name-editable {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+
+.audio-name-editable:hover {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.audio-name-input {
+  width: 100%;
+  padding: 2px 6px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-family: inherit;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* === Clickable Transcript Name === */
+.transcript-remap-link {
+  cursor: pointer;
+  color: var(--text);
+  border-bottom: 1px dashed var(--border);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.transcript-remap-link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* === Remap Modal === */
+.remap-modal {
+  padding: 20px 24px;
+  max-width: 680px;
+}
+
+.remap-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.remap-modal .modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.remap-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remap-section {
+  margin-bottom: 12px;
+}
+
+.remap-section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.remap-divider {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  padding: 8px 0 6px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+.remap-search {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.remap-results {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
 /* === Trim Controls === */
 .trim-controls {
   margin-top: 12px;

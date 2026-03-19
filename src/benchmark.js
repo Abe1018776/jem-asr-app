@@ -146,11 +146,18 @@ export async function runBenchmark(benchmarkAudioIds, state, onProgress) {
         const asrTranscript = await sendToAsrModel(audioBlob, model);
         const werResult = calculateWER(goldTranscript, asrTranscript);
 
+        // Custom WER: (I + D + critical_S) / N
+        // Without user-marked critical substitutions, all S count as critical
+        const customWer = werResult.total > 0
+          ? (werResult.insertions + werResult.deletions + werResult.substitutions) / werResult.total
+          : 0;
+
         const result = {
           model: model.name,
           transcript: asrTranscript,
           wer: werResult.wer,
           cer: werResult.cer,
+          customWer,
           substitutions: werResult.substitutions,
           insertions: werResult.insertions,
           deletions: werResult.deletions,
@@ -223,121 +230,161 @@ export function renderBenchmarkTable(container, state) {
     return;
   }
 
-  // Collect unique model names from results
-  const modelNames = new Set();
+  // Build flat rows: one row per (file, model) with latest result
+  const flatRows = [];
   for (const audio of benchmarkAudios) {
     const results = benchmarks[audio.id]?.results || [];
-    results.forEach(r => modelNames.add(r.model));
+    // Group by model, take latest
+    const byModel = {};
+    results.forEach(r => { byModel[r.model] = r; });
+    for (const [modelName, r] of Object.entries(byModel)) {
+      const allRuns = results.filter(x => x.model === modelName);
+      const prev = allRuns.length >= 2 ? allRuns[allRuns.length - 2] : null;
+      flatRows.push({ audio, model: modelName, result: r, prevResult: prev, audioId: audio.id });
+    }
   }
-  const modelList = [...modelNames];
 
-  const table = document.createElement('table');
-  table.className = 'data-table benchmark-table';
+  // Find best (lowest) WER per file for green highlighting
+  const bestWerByFile = {};
+  for (const row of flatRows) {
+    const id = row.audioId;
+    if (bestWerByFile[id] === undefined || row.result.wer < bestWerByFile[id]) {
+      bestWerByFile[id] = row.result.wer;
+    }
+  }
 
-  // Header row with model names
-  const thead = document.createElement('thead');
-  const headerRow = document.createElement('tr');
-  const fileHeader = document.createElement('th');
-  fileHeader.textContent = 'Benchmark File';
-  headerRow.appendChild(fileHeader);
-  modelList.forEach(name => {
-    const th = document.createElement('th');
-    th.textContent = name;
-    th.colSpan = 2;
-    headerRow.appendChild(th);
-  });
-  thead.appendChild(headerRow);
+  // Sort state
+  let sortCol = null;
+  let sortDir = 'asc';
 
-  // Sub-header for WER/CER
-  const subRow = document.createElement('tr');
-  const emptyTh = document.createElement('th');
-  subRow.appendChild(emptyTh);
-  modelList.forEach(() => {
-    const werTh = document.createElement('th');
-    werTh.textContent = 'WER';
-    const cerTh = document.createElement('th');
-    cerTh.textContent = 'CER';
-    subRow.appendChild(werTh);
-    subRow.appendChild(cerTh);
-  });
-  thead.appendChild(subRow);
-  table.appendChild(thead);
+  const columns = [
+    { key: 'model', label: 'Model', value: r => r.model },
+    { key: 'file', label: 'File', value: r => r.audio.name },
+    { key: 'wer', label: 'WER', value: r => r.result.wer },
+    { key: 'cer', label: 'CER', value: r => r.result.cer },
+    { key: 'customWer', label: 'Custom WER', value: r => r.result.customWer },
+  ];
 
-  // Body
-  const tbody = document.createElement('tbody');
-  benchmarkAudios.forEach(audio => {
-    const tr = document.createElement('tr');
-    const nameTd = document.createElement('td');
-    nameTd.textContent = audio.name;
-    tr.appendChild(nameTd);
+  function renderTable() {
+    container.innerHTML = '';
 
-    const results = benchmarks[audio.id]?.results || [];
-    // Latest result per model
-    const latestByModel = {};
-    results.forEach(r => { latestByModel[r.model] = r; });
-
-    // Find best WER for this row
-    let bestWer = Infinity;
-    modelList.forEach(name => {
-      const r = latestByModel[name];
-      if (r && r.wer < bestWer) bestWer = r.wer;
-    });
-
-    modelList.forEach(name => {
-      const r = latestByModel[name];
-      const werTd = document.createElement('td');
-      const cerTd = document.createElement('td');
-
-      if (r) {
-        werTd.textContent = (r.wer * 100).toFixed(1) + '%';
-        cerTd.textContent = (r.cer * 100).toFixed(1) + '%';
-
-        if (r.wer === bestWer) {
-          werTd.classList.add('best-score');
-        }
-
-        // Delta arrows from previous run
-        const allRuns = results.filter(x => x.model === name);
-        if (allRuns.length >= 2) {
-          const prev = allRuns[allRuns.length - 2];
-          const delta = r.wer - prev.wer;
-          if (delta !== 0) {
-            const arrow = document.createElement('span');
-            arrow.className = delta < 0 ? 'delta-improved' : 'delta-worse';
-            arrow.textContent = delta < 0 ? ' \u2193' : ' \u2191';
-            werTd.appendChild(arrow);
-          }
-        }
-
-        // Click to expand word errors
-        werTd.classList.add('expandable-cell');
-        werTd.addEventListener('click', () => {
-          const next = tr.nextElementSibling;
-          if (next && next.classList.contains('word-error-row')) {
-            next.remove();
-            return;
-          }
-          const detailRow = document.createElement('tr');
-          detailRow.className = 'word-error-row';
-          const detailTd = document.createElement('td');
-          detailTd.colSpan = 1 + modelList.length * 2;
-          renderWordErrors(r, detailTd);
-          detailRow.appendChild(detailTd);
-          tr.parentNode.insertBefore(detailRow, tr.nextSibling);
+    let sorted = [...flatRows];
+    if (sortCol) {
+      const colDef = columns.find(c => c.key === sortCol);
+      if (colDef) {
+        const dir = sortDir === 'desc' ? -1 : 1;
+        sorted.sort((a, b) => {
+          const va = colDef.value(a);
+          const vb = colDef.value(b);
+          if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+          const sa = String(va || '');
+          const sb = String(vb || '');
+          return sa.localeCompare(sb) * dir;
         });
-      } else {
-        werTd.textContent = '--';
-        cerTd.textContent = '--';
       }
+    }
 
-      tr.appendChild(werTd);
-      tr.appendChild(cerTd);
+    const table = document.createElement('table');
+    table.className = 'data-table benchmark-table';
+
+    // Header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    columns.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col.label;
+      th.className = 'sortable-header';
+      if (sortCol === col.key) {
+        th.textContent += sortDir === 'asc' ? ' \u25B2' : ' \u25BC';
+      }
+      th.addEventListener('click', () => {
+        if (sortCol === col.key) {
+          sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortCol = col.key;
+          sortDir = 'asc';
+        }
+        renderTable();
+      });
+      headerRow.appendChild(th);
     });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-    tbody.appendChild(tr);
-  });
-  table.appendChild(tbody);
-  container.appendChild(table);
+    // Body
+    const tbody = document.createElement('tbody');
+    sorted.forEach(row => {
+      const tr = document.createElement('tr');
+
+      // Model
+      const modelTd = document.createElement('td');
+      modelTd.textContent = row.model;
+      tr.appendChild(modelTd);
+
+      // File with Benchmark badge
+      const fileTd = document.createElement('td');
+      fileTd.textContent = row.audio.name;
+      const badge = document.createElement('span');
+      badge.className = 'status-badge status-benchmark';
+      badge.textContent = 'Benchmark';
+      fileTd.appendChild(document.createTextNode(' '));
+      fileTd.appendChild(badge);
+      tr.appendChild(fileTd);
+
+      // WER
+      const werTd = document.createElement('td');
+      werTd.textContent = (row.result.wer * 100).toFixed(1) + '%';
+      if (row.result.wer === bestWerByFile[row.audioId]) {
+        werTd.classList.add('best-score');
+      }
+      // Delta arrow
+      if (row.prevResult) {
+        const delta = row.result.wer - row.prevResult.wer;
+        if (delta !== 0) {
+          const arrow = document.createElement('span');
+          arrow.className = delta < 0 ? 'delta-improved' : 'delta-worse';
+          arrow.textContent = delta < 0 ? ' \u2193' : ' \u2191';
+          werTd.appendChild(arrow);
+        }
+      }
+      tr.appendChild(werTd);
+
+      // CER
+      const cerTd = document.createElement('td');
+      cerTd.textContent = (row.result.cer * 100).toFixed(1) + '%';
+      tr.appendChild(cerTd);
+
+      // Custom WER
+      const cwTd = document.createElement('td');
+      cwTd.textContent = row.result.customWer != null
+        ? (row.result.customWer * 100).toFixed(1) + '%'
+        : '--';
+      tr.appendChild(cwTd);
+
+      // Click row to expand word errors
+      tr.classList.add('expandable-row');
+      tr.addEventListener('click', () => {
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains('word-error-row')) {
+          next.remove();
+          return;
+        }
+        const detailRow = document.createElement('tr');
+        detailRow.className = 'word-error-row';
+        const detailTd = document.createElement('td');
+        detailTd.colSpan = columns.length;
+        renderWordErrors(row.result, detailTd);
+        detailRow.appendChild(detailTd);
+        tr.parentNode.insertBefore(detailRow, tr.nextSibling);
+      });
+
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  renderTable();
 }
 
 // ── Word Error View ─────────────────────────────────────────────────

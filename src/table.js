@@ -1,5 +1,6 @@
-import { getState, getFilteredRows, getFilterCounts, getStatus } from './state.js';
+import { getState, getFilteredRows, getFilterCounts, getStatus, updateState } from './state.js';
 import { truncateWords, formatConfidence, debounce } from './utils.js';
+import { linkMatch, getSuggestedMatches } from './mapping.js';
 
 // ── Inline audio player ─────────────────────────────────────────────
 let _activeInlinePlayer = null;
@@ -57,29 +58,24 @@ let _onRowSelect = null;
 
 // ── Column definitions ─────────────────────────────────────────────
 const COLUMNS = [
-  { key: 'checkbox',    label: '',               sortable: false, showWhen: () => true },
-  { key: 'rowNum',      label: '#',              sortable: false, showWhen: () => true },
-  { key: 'name',        label: 'Audio Name',     sortable: true,  showWhen: () => true },
-  { key: 'year',        label: 'Year',           sortable: true,  showWhen: () => true },
-  { key: 'firstLine',   label: 'First 15 Words', sortable: false, showWhen: (f) => f !== 'unmapped' },
-  { key: 'transcript',  label: 'Transcript Name',sortable: true,  showWhen: (f) => f !== 'unmapped' },
-  { key: 'status',      label: 'Status',         sortable: true,  showWhen: () => true },
-  { key: 'actions',     label: 'Actions',        sortable: false, showWhen: () => true },
+  { key: 'checkbox',      label: '',                  sortable: false, showWhen: () => true },
+  { key: 'rowNum',        label: '#',                 sortable: false, showWhen: () => true },
+  { key: 'name',          label: 'Audio Name',        sortable: true,  showWhen: () => true },
+  { key: 'year',          label: 'Year',              sortable: true,  showWhen: () => true },
+  { key: 'type',          label: 'Type',              sortable: true,  showWhen: () => true },
+  { key: 'estMinutes',    label: 'Est. Duration',     sortable: true,  showWhen: () => true },
+  { key: 'firstLine',     label: 'First 15 Words',    sortable: false, showWhen: (f) => !['unmapped'].includes(f) },
+  { key: 'transcript',    label: 'Transcript Name',   sortable: true,  showWhen: (f) => !['unmapped'].includes(f) },
+  { key: 'matchConf',     label: 'Match Confidence',  sortable: true,  showWhen: (f) => !['unmapped'].includes(f) },
+  { key: 'cleanRate',     label: 'Clean Rate',        sortable: true,  showWhen: (f) => !['unmapped', 'mapped'].includes(f) },
+  { key: 'avgConf',       label: 'Avg. Confidence',   sortable: true,  showWhen: (f) => !['unmapped', 'mapped', 'cleaned'].includes(f) },
+  { key: 'lowConfWords',  label: 'Low Conf. Words',   sortable: true,  showWhen: (f) => !['unmapped', 'mapped', 'cleaned'].includes(f) },
+  { key: 'status',        label: 'Status',            sortable: true,  showWhen: () => true },
+  { key: 'actions',       label: 'Actions',           sortable: false, showWhen: () => true },
 ];
 
-// ── Filter key mapping (HTML data-filter → state.js key) ────────────
-const FILTER_MAP = {
-  fifty: '50hr',
-  'fifty-unmapped': '50hr-unmapped',
-  'fifty-mapped': '50hr-mapped',
-  'fifty-cleaned': '50hr-cleaned',
-  'fifty-aligned': '50hr-aligned',
-  'fifty-approved': '50hr-approved',
-};
-
-function stateFilterKey(htmlFilter) {
-  return FILTER_MAP[htmlFilter] || htmlFilter;
-}
+// Filter keys from HTML data-filter attributes are passed directly to state.js
+// since getFilteredRows now accepts both 'fifty-*' and '50hr-*' variants.
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -106,7 +102,7 @@ function getRowData(audio) {
 
   return {
     id,
-    name: audio.name || '',
+    name: (state.audioNames && state.audioNames[id]) || audio.name || '',
     year: audio.year || '',
     month: audio.month || '',
     type: audio.type || '',
@@ -215,6 +211,150 @@ function getStatusClass(status) {
   return map[status] || 'status-unmapped';
 }
 
+// ── Remap modal ─────────────────────────────────────────────────────
+
+function openRemapModal(audioId) {
+  const state = getState();
+  const audio = state.audio.find(a => a.id === audioId);
+  if (!audio) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal remap-modal';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+  const title = document.createElement('h2');
+  title.textContent = 'Change Transcript';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'btn btn-close';
+  closeBtn.textContent = '\u00D7';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  modal.appendChild(header);
+
+  const sub = document.createElement('div');
+  sub.className = 'remap-subtitle';
+  sub.textContent = (state.audioNames && state.audioNames[audioId]) || audio.name || audioId;
+  modal.appendChild(sub);
+
+  // Suggested matches
+  const suggestions = getSuggestedMatches(audio, state.transcripts, state.mappings);
+  if (suggestions.length > 0) {
+    const suggestSection = document.createElement('div');
+    suggestSection.className = 'remap-section';
+    const suggestLabel = document.createElement('div');
+    suggestLabel.className = 'remap-section-label';
+    suggestLabel.textContent = 'Closest matches';
+    suggestSection.appendChild(suggestLabel);
+
+    for (const s of suggestions) {
+      const transcript = state.transcripts.find(t => t.id === s.transcriptId);
+      if (!transcript) continue;
+      const row = document.createElement('div');
+      row.className = 'suggestion-row';
+
+      const badge = document.createElement('span');
+      badge.className = 'confidence-badge';
+      badge.textContent = formatConfidence(s.score);
+      if (s.score >= 0.8) badge.classList.add('confidence-high');
+      else if (s.score >= 0.4) badge.classList.add('confidence-mid');
+      else badge.classList.add('confidence-low');
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'suggestion-name';
+      nameSpan.textContent = transcript.name;
+
+      const reason = document.createElement('span');
+      reason.className = 'suggestion-reason text-secondary';
+      reason.textContent = s.matchReason;
+
+      const selectBtn = document.createElement('button');
+      selectBtn.className = 'action-btn action-btn-primary';
+      selectBtn.textContent = 'Select';
+      selectBtn.style.flexShrink = '0';
+      selectBtn.addEventListener('click', () => {
+        linkMatch(audioId, s.transcriptId, s.score, s.matchReason);
+        overlay.remove();
+        updateTable();
+      });
+
+      row.appendChild(badge);
+      row.appendChild(nameSpan);
+      row.appendChild(reason);
+      row.appendChild(selectBtn);
+      suggestSection.appendChild(row);
+    }
+    modal.appendChild(suggestSection);
+  }
+
+  // Search divider
+  const divider = document.createElement('div');
+  divider.className = 'remap-divider';
+  divider.textContent = 'Search all transcripts';
+  modal.appendChild(divider);
+
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'search-input remap-search';
+  searchInput.placeholder = 'Filter by name or text…';
+  modal.appendChild(searchInput);
+
+  const results = document.createElement('div');
+  results.className = 'remap-results';
+
+  function renderResults() {
+    results.innerHTML = '';
+    const term = searchInput.value.toLowerCase();
+    const filtered = state.transcripts.filter(t => {
+      if (!term) return true;
+      return (t.name || '').toLowerCase().includes(term) ||
+             (t.firstLine || '').toLowerCase().includes(term);
+    });
+    for (const t of filtered.slice(0, 60)) {
+      const row = document.createElement('div');
+      row.className = 'search-result-row';
+      const name = document.createElement('span');
+      name.className = 'result-name';
+      name.textContent = t.name || t.id;
+      const preview = document.createElement('span');
+      preview.className = 'result-preview hebrew-text';
+      preview.dir = 'rtl';
+      preview.textContent = truncateWords(t.firstLine || '', 12);
+      const selectBtn = document.createElement('button');
+      selectBtn.className = 'action-btn action-btn-primary';
+      selectBtn.textContent = 'Select';
+      selectBtn.style.flexShrink = '0';
+      selectBtn.addEventListener('click', () => {
+        linkMatch(audioId, t.id, 1.0, 'manual');
+        overlay.remove();
+        updateTable();
+      });
+      row.appendChild(name);
+      row.appendChild(preview);
+      row.appendChild(selectBtn);
+      results.appendChild(row);
+    }
+  }
+
+  searchInput.addEventListener('input', renderResults);
+  modal.appendChild(results);
+  overlay.appendChild(modal);
+
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.addEventListener('keydown', function handler(e) {
+    if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', handler); }
+  });
+
+  document.body.appendChild(overlay);
+  renderResults();
+  searchInput.focus();
+}
+
 // ── Build table DOM ─────────────────────────────────────────────────
 
 function buildTable(rows) {
@@ -304,6 +444,67 @@ function buildTable(rows) {
         case 'rowNum':
           td.textContent = startIdx + i + 1;
           break;
+        case 'name': {
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'audio-name-editable';
+          nameSpan.textContent = row.name;
+          nameSpan.title = 'Click to edit';
+          nameSpan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'audio-name-input';
+            input.value = row.name;
+            td.replaceChild(input, nameSpan);
+            input.focus();
+            input.select();
+            let saved = false;
+            const save = () => {
+              if (saved) return;
+              saved = true;
+              const newName = input.value.trim();
+              if (newName && newName !== row.name) {
+                updateState('audioNames', row.id, newName);
+              }
+              updateTable();
+            };
+            input.addEventListener('blur', save);
+            input.addEventListener('keydown', (ke) => {
+              if (ke.key === 'Enter') { ke.preventDefault(); input.blur(); }
+              if (ke.key === 'Escape') {
+                ke.preventDefault();
+                saved = true;
+                input.removeEventListener('blur', save);
+                td.replaceChild(nameSpan, input);
+              }
+            });
+          });
+          td.appendChild(nameSpan);
+          break;
+        }
+        case 'transcript': {
+          if (row.transcript) {
+            const link = document.createElement('span');
+            link.className = 'transcript-remap-link';
+            link.textContent = row.transcript;
+            link.title = 'Click to change transcript';
+            link.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openRemapModal(row.id);
+            });
+            td.appendChild(link);
+          } else {
+            const mapBtn = document.createElement('button');
+            mapBtn.className = 'action-btn';
+            mapBtn.textContent = 'Map';
+            mapBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              openRemapModal(row.id);
+            });
+            td.appendChild(mapBtn);
+          }
+          break;
+        }
         case 'firstLine':
           td.textContent = row.firstLine;
           td.classList.add('cell-hebrew');
@@ -331,7 +532,7 @@ function buildTable(rows) {
             });
             td.appendChild(playBtn);
           }
-          // Open button
+          // Open button — opens detail.html in a new tab
           const btn = document.createElement('button');
           btn.className = 'action-btn action-btn-primary';
           btn.textContent = 'Open';
@@ -479,12 +680,12 @@ function buildPagination(totalRows) {
 function updateFilterCounts() {
   const counts = getFilterCounts();
   const map = {
-    'count-fifty': '50hr',
-    'count-fifty-unmapped': '50hr-unmapped',
-    'count-fifty-mapped': '50hr-mapped',
-    'count-fifty-cleaned': '50hr-cleaned',
-    'count-fifty-aligned': '50hr-aligned',
-    'count-fifty-approved': '50hr-approved',
+    'count-fifty': 'fifty',
+    'count-fifty-unmapped': 'fifty-unmapped',
+    'count-fifty-mapped': 'fifty-mapped',
+    'count-fifty-cleaned': 'fifty-cleaned',
+    'count-fifty-aligned': 'fifty-aligned',
+    'count-fifty-approved': 'fifty-approved',
   };
   for (const [elId, stateKey] of Object.entries(map)) {
     const el = document.getElementById(elId);
@@ -580,8 +781,8 @@ function renderTable(container, options = {}) {
 function updateTable() {
   if (!_container) return;
 
-  // Get filtered rows from state (map HTML filter key to state key)
-  const filteredAudio = getFilteredRows(stateFilterKey(currentFilter));
+  // Get filtered rows from state
+  const filteredAudio = getFilteredRows(currentFilter);
 
   // Build row data
   let rows = filteredAudio.map(getRowData);

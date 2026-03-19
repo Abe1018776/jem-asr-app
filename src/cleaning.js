@@ -49,6 +49,10 @@ export function cleanText(rawText) {
   return text;
 }
 
+export function cleanRate(rawText, cleanedText) {
+  return calculateCleanRate(rawText, cleanedText);
+}
+
 export function calculateCleanRate(rawText, cleanedText) {
   if (!rawText) return 100;
   const rawWords = rawText.split(/\s+/).filter(Boolean);

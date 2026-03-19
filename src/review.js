@@ -67,7 +67,7 @@ function findWordConfidence(alignmentWords, word, index) {
   return 1;
 }
 
-export function renderReviewPanel(audioId, state, container, callbacks) {
+export function renderReviewPanel(container, audioId, state, callbacks) {
   const entry = state.audio.find(a => a.id === audioId);
   const cleaning = state.cleaning[audioId];
   const alignment = state.alignments[audioId];
@@ -166,7 +166,7 @@ export function renderReviewPanel(audioId, state, container, callbacks) {
     // Bug fix #3: Use word-text matching fallback instead of blind index
     const conf = findWordConfidence(alignmentWords, word, i);
     const level = conf >= 0.8 ? 'high' : conf >= 0.4 ? 'mid' : 'low';
-    span.className = `word-chip confidence-${level}-bg`;
+    span.className = `word-chip confidence-${level}`;
     span.textContent = word;
     span.dataset.index = i;
 

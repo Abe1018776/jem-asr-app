@@ -41,17 +41,33 @@ export async function alignRow(audioId, state) {
 
   const audioBase64 = await fetchAudioAsBase64(url);
 
-  const response = await fetch(ALIGN_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      mode: 'align',
-      audio_base64: audioBase64,
-      audio_format: '.mp3',
-      text: cleaningData.cleanedText,
-      language: 'yi',
-    }),
+  const requestBody = JSON.stringify({
+    mode: 'align',
+    audio_base64: audioBase64,
+    audio_format: '.mp3',
+    text: cleaningData.cleanedText,
+    language: 'yi',
   });
+
+  // Retry logic for cold start 502/504 timeouts
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY_MS = 10000;
+  let response;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    response = await fetch(ALIGN_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: requestBody,
+    });
+    if (response.status === 502 || response.status === 504) {
+      console.warn(`[Align] Got ${response.status} on attempt ${attempt}/${MAX_RETRIES} — cold start likely, retrying in ${RETRY_DELAY_MS / 1000}s...`);
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        continue;
+      }
+    }
+    break;
+  }
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');

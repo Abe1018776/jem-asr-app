@@ -1,4 +1,5 @@
-import { initState, getState, getStatus, getFilteredRows, exportState, importState } from './state.js';
+import { initState, getState, getStatus, getFilteredRows, exportState, importState, mergeSupabaseData } from './state.js';
+import { loadFromSupabase } from './db.js';
 import { renderTable, updateTable, getSelectedRows } from './table.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
@@ -122,6 +123,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
   }
+
+  // Load from Supabase in background — merge when ready and re-render
+  loadFromSupabase().then(remote => {
+    if (remote) {
+      mergeSupabaseData(remote);
+      updateTable();
+    }
+  }).catch(err => console.warn('[DB] startup load failed:', err));
 
   const tableContainer = document.getElementById('table-container');
   const modalOverlay = document.getElementById('modal-overlay');
@@ -292,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       panel.appendChild(searchBtn);
     } else if (status === 'aligned' || status === 'approved') {
       // Show review panel
-      renderReviewPanel(audioId, state, panel, {
+      renderReviewPanel(panel, audioId, state, {
         onApprove: () => {
           updateTable();
           expandedRow = null;
@@ -553,6 +562,69 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (e.key === 'E' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
       e.preventDefault();
       document.getElementById('btn-export-csv')?.click();
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      // Navigate rows
+      e.preventDefault();
+      const rows = tableContainer.querySelectorAll('tr.table-row');
+      if (rows.length === 0) return;
+      const currentIdx = expandedRow
+        ? [...rows].findIndex(r => r.getAttribute('data-audio-id') === expandedRow)
+        : -1;
+      let nextIdx;
+      if (e.key === 'ArrowDown') {
+        nextIdx = currentIdx < rows.length - 1 ? currentIdx + 1 : 0;
+      } else {
+        nextIdx = currentIdx > 0 ? currentIdx - 1 : rows.length - 1;
+      }
+      const nextAudioId = rows[nextIdx].getAttribute('data-audio-id');
+      if (nextAudioId) {
+        onRowExpand(nextAudioId);
+        rows[nextIdx].scrollIntoView({ block: 'nearest' });
+      }
+    } else if (e.key === 'Enter') {
+      // Approve current expanded row
+      if (expandedRow) {
+        const approveBtn = document.querySelector('.expanded-panel .review-approve-btn');
+        if (approveBtn) approveBtn.click();
+      }
+    } else if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+      // Skip current expanded row
+      if (expandedRow) {
+        const skipBtn = document.querySelector('.expanded-panel .review-skip-btn');
+        if (skipBtn) skipBtn.click();
+      }
+    } else if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+      // Reject current expanded row
+      if (expandedRow) {
+        const rejectBtn = document.querySelector('.expanded-panel .review-reject-btn');
+        if (rejectBtn) rejectBtn.click();
+      }
+    } else if (e.key === 'e' && !e.ctrlKey && !e.metaKey) {
+      // Toggle edit mode in review panel
+      if (expandedRow) {
+        const editBtn = document.querySelector('.expanded-panel .review-edit-btn');
+        if (editBtn) editBtn.click();
+      }
+    } else if (e.key === ' ') {
+      // Space = play/pause audio
+      e.preventDefault();
+      const audioEl = document.querySelector('.expanded-panel audio, .karaoke-player audio');
+      if (audioEl) {
+        if (audioEl.paused) audioEl.play();
+        else audioEl.pause();
+      }
+    } else if (e.key === 'ArrowLeft') {
+      // Seek -5s
+      const audioEl = document.querySelector('.expanded-panel audio, .karaoke-player audio');
+      if (audioEl) {
+        audioEl.currentTime = Math.max(0, audioEl.currentTime - 5);
+      }
+    } else if (e.key === 'ArrowRight') {
+      // Seek +5s
+      const audioEl = document.querySelector('.expanded-panel audio, .karaoke-player audio');
+      if (audioEl) {
+        audioEl.currentTime = Math.min(audioEl.duration || 0, audioEl.currentTime + 5);
+      }
     }
   });
 });

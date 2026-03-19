@@ -1,3 +1,5 @@
+import { syncStateKey } from './db.js';
+
 const STORAGE_KEY = 'jem-asr-state';
 
 let state = null;
@@ -16,6 +18,7 @@ export function initState(data) {
     benchmarks: saved.benchmarks || {},
     asrModels: saved.asrModels || [],
     trims: saved.trims || {},
+    audioNames: saved.audioNames || {},
   };
   // Migrate old format into transcriptVersions
   migrateToVersions();
@@ -88,6 +91,19 @@ export function getState() {
   return state;
 }
 
+// Merge data loaded from Supabase, overwriting localStorage values.
+// Called once on startup after loadFromSupabase() resolves.
+export function mergeSupabaseData(remote) {
+  if (!state || !remote) return;
+  if (remote.mappings) Object.assign(state.mappings, remote.mappings);
+  if (remote.cleaning) Object.assign(state.cleaning, remote.cleaning);
+  if (remote.alignments) Object.assign(state.alignments, remote.alignments);
+  if (remote.reviews) Object.assign(state.reviews, remote.reviews);
+  // Re-run migration so transcriptVersions reflects the merged data
+  migrateToVersions();
+  saveToStorage();
+}
+
 export function updateState(key, audioId, value) {
   if (!state) return;
   if (!state[key]) state[key] = {};
@@ -97,6 +113,11 @@ export function updateState(key, audioId, value) {
     state[key][audioId] = value;
   }
   saveToStorage();
+  // Sync to Supabase (fire and forget)
+  if (audioId !== null) {
+    const audioEntry = state.audio?.find(a => a.id === audioId);
+    syncStateKey(key, audioId, value, audioEntry);
+  }
 }
 
 export function getStatus(audioId) {
@@ -197,7 +218,7 @@ function syncLegacyKeys(audioId) {
   }
 }
 
-export function getFilteredRows(filter) {
+export function getFilteredRows(filter, searchTerm, sortCol, sortDir, yearFilter, monthFilter, typeFilter) {
   if (!state) return [];
   const { audio } = state;
   const fifty = audio.filter(a => a.isSelected50hr);
@@ -208,38 +229,100 @@ export function getFilteredRows(filter) {
     return name.includes('sicha') || name.includes('maamar') || name.includes('mamar');
   };
 
+  let rows;
   switch (filter) {
+    case 'fifty':
     case '50hr':
-      return fifty.filter(isSichaOrMaamar);
+      rows = fifty.filter(isSichaOrMaamar);
+      break;
+    case 'fifty-unmapped':
     case '50hr-unmapped':
-      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'unmapped');
+      rows = fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'unmapped');
+      break;
+    case 'fifty-mapped':
     case '50hr-mapped':
-      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'mapped');
+      rows = fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'mapped');
+      break;
+    case 'fifty-cleaned':
     case '50hr-cleaned':
-      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'cleaned');
+      rows = fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'cleaned');
+      break;
+    case 'fifty-aligned':
     case '50hr-aligned':
-      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'aligned');
+      rows = fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'aligned');
+      break;
+    case 'fifty-approved':
     case '50hr-approved':
-      return fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'approved');
+      rows = fifty.filter(a => isSichaOrMaamar(a) && getStatus(a.id) === 'approved');
+      break;
     case 'unmapped':
-      return audio.filter(a => getStatus(a.id) === 'unmapped');
+      rows = audio.filter(a => getStatus(a.id) === 'unmapped');
+      break;
     case 'mapped':
-      return audio.filter(a => {
+      rows = audio.filter(a => {
         const s = getStatus(a.id);
         return (s === 'mapped' || s === 'cleaned' || s === 'aligned') && !a.isBenchmark;
       });
+      break;
     case 'cleaned':
-      return audio.filter(a => getStatus(a.id) === 'cleaned');
+      rows = audio.filter(a => getStatus(a.id) === 'cleaned');
+      break;
     case 'benchmark':
-      return audio.filter(a => a.isBenchmark);
+      rows = audio.filter(a => a.isBenchmark);
+      break;
+    case 'needs-review':
     case 'needsReview':
-      return audio.filter(a => getStatus(a.id) === 'aligned');
+      rows = audio.filter(a => getStatus(a.id) === 'aligned');
+      break;
     case 'approved':
-      return audio.filter(a => getStatus(a.id) === 'approved');
+      rows = audio.filter(a => getStatus(a.id) === 'approved');
+      break;
     case 'all':
     default:
-      return audio;
+      rows = audio;
+      break;
   }
+
+  // Apply year/month/type filters if provided
+  if (yearFilter) rows = rows.filter(a => a.year === yearFilter);
+  if (monthFilter) rows = rows.filter(a => a.month === monthFilter);
+  if (typeFilter) rows = rows.filter(a => a.type === typeFilter);
+
+  // Apply search term if provided
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    rows = rows.filter(a => {
+      const name = (a.name || '').toLowerCase();
+      const transcript = getTranscriptNameForAudio(a.id).toLowerCase();
+      return name.includes(term) || transcript.includes(term);
+    });
+  }
+
+  // Apply sort if provided
+  if (sortCol) {
+    const dir = sortDir === 'desc' ? -1 : 1;
+    rows = [...rows].sort((a, b) => {
+      let va = a[sortCol] || '';
+      let vb = b[sortCol] || '';
+      if (typeof va === 'string') {
+        const na = parseFloat(va);
+        const nb = parseFloat(vb);
+        if (!isNaN(na) && !isNaN(nb)) return (na - nb) * dir;
+      }
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+  }
+
+  return rows;
+}
+
+function getTranscriptNameForAudio(audioId) {
+  if (!state || !state.mappings || !state.mappings[audioId]) return '';
+  const mapping = state.mappings[audioId];
+  const transcript = (state.transcripts || []).find(t => t.id === mapping.transcriptId);
+  return transcript ? transcript.name : '';
 }
 
 export function getFilterCounts() {
@@ -250,12 +333,31 @@ export function getFilterCounts() {
     return name.includes('sicha') || name.includes('maamar') || name.includes('mamar');
   };
   const fifty = audio.filter(a => a.isSelected50hr && isSichaOrMaamar(a));
+
+  const statusCounts = { unmapped: 0, mapped: 0, cleaned: 0, aligned: 0, approved: 0 };
+  audio.forEach(a => {
+    const s = getStatus(a.id);
+    if (statusCounts[s] !== undefined) statusCounts[s]++;
+  });
+
   return {
+    all: audio.length,
+    unmapped: statusCounts.unmapped,
+    mapped: statusCounts.mapped,
+    benchmark: audio.filter(a => a.isBenchmark).length,
+    'needs-review': statusCounts.aligned,
+    approved: statusCounts.approved,
+    'fifty': fifty.length,
     '50hr': fifty.length,
+    'fifty-unmapped': fifty.filter(a => getStatus(a.id) === 'unmapped').length,
     '50hr-unmapped': fifty.filter(a => getStatus(a.id) === 'unmapped').length,
+    'fifty-mapped': fifty.filter(a => getStatus(a.id) === 'mapped').length,
     '50hr-mapped': fifty.filter(a => getStatus(a.id) === 'mapped').length,
+    'fifty-cleaned': fifty.filter(a => getStatus(a.id) === 'cleaned').length,
     '50hr-cleaned': fifty.filter(a => getStatus(a.id) === 'cleaned').length,
+    'fifty-aligned': fifty.filter(a => getStatus(a.id) === 'aligned').length,
     '50hr-aligned': fifty.filter(a => getStatus(a.id) === 'aligned').length,
+    'fifty-approved': fifty.filter(a => getStatus(a.id) === 'approved').length,
     '50hr-approved': fifty.filter(a => getStatus(a.id) === 'approved').length,
   };
 }
@@ -335,6 +437,7 @@ function saveToStorage() {
       benchmarks: state.benchmarks,
       asrModels: state.asrModels,
       trims: state.trims,
+      audioNames: state.audioNames,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
   } catch (e) {

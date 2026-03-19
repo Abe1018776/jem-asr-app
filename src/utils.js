@@ -139,7 +139,7 @@ function groupWordSegments(words) {
   for (const w of words) {
     if (!current) {
       current = { start: w.start, end: w.end, words: [w.word] };
-    } else if (w.start - current.end > 0.5) {
+    } else if (w.start - current.end > 0.5 || current.words.length >= 10) {
       current.text = current.words.join(' ');
       segments.push(current);
       current = { start: w.start, end: w.end, words: [w.word] };
@@ -202,7 +202,7 @@ export function truncateWords(text, n) {
 }
 
 export function formatConfidence(score) {
-  if (score == null) return '--';
+  if (score == null) return '\u2014';
   return Math.round(score * 100) + '%';
 }
 
