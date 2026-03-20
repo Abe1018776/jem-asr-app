@@ -103,17 +103,15 @@ export function mergeSupabaseData(remote) {
   if (remote.reviews) Object.assign(state.reviews, remote.reviews);
 
   // ── Audio catalog metadata ───────────────────────────────────────────
-  // Supabase is now source of truth for isSelected50hr, isBenchmark, r2Link.
+  // Only promote flags to true — never let a stale false in Supabase
+  // (from early ensureAudioFile calls before flags were computed) override
+  // the correct values derived from data.json. r2Link is safe to overwrite.
   if (remote.audioFiles && state.audio) {
     for (const audio of state.audio) {
       const sb = remote.audioFiles[audio.id];
       if (!sb) continue;
-      if (sb.isSelected50hr !== null && sb.isSelected50hr !== undefined) {
-        audio.isSelected50hr = sb.isSelected50hr;
-      }
-      if (sb.isBenchmark !== null && sb.isBenchmark !== undefined) {
-        audio.isBenchmark = sb.isBenchmark;
-      }
+      if (sb.isSelected50hr === true) audio.isSelected50hr = true;
+      if (sb.isBenchmark === true) audio.isBenchmark = true;
       if (sb.r2Link) audio.r2Link = sb.r2Link;
     }
   }
