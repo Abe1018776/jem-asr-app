@@ -550,7 +550,7 @@ function buildTable(rows) {
     });
 
     tr.addEventListener('click', () => {
-      window.open(`/detail.html?id=${encodeURIComponent(row.id)}`, '_blank');
+      if (_onRowExpand) _onRowExpand(row.id);
     });
 
     tbody.appendChild(tr);
