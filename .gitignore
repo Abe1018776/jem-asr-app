@@ -4,3 +4,4 @@ dist/
 tmp-audio/
 .wrangler/
 training/
+supabase/.temp/
