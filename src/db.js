@@ -42,7 +42,7 @@ export async function syncMapping(audioId, mapping, audioEntry) {
       confidence: mapping.confidence,
       match_reason: mapping.matchReason,
       confirmed_by: mapping.confirmedBy,
-      confirmed_at: mapping.confirmedAt,
+      // confirmed_at is not a column — created_at is auto-set on insert
     },
     { onConflict: 'audio_id' },
   );
@@ -176,7 +176,7 @@ export async function bulkSyncMappings(mappingsObj) {
     confidence: m.confidence,
     match_reason: m.matchReason,
     confirmed_by: m.confirmedBy,
-    confirmed_at: m.confirmedAt,
+    // no confirmed_at column — created_at is auto-set
   }));
   for (let i = 0; i < rows.length; i += CHUNK) {
     // onConflict: don't overwrite user-confirmed mappings with imported ones
@@ -189,32 +189,61 @@ export async function bulkSyncMappings(mappingsObj) {
 }
 
 // ── Bulk load from Supabase on startup ──────────────────────────────
-// Returns a full state object (work + catalog) to be merged over localStorage.
+// Returns the full catalog (audio + transcripts arrays) plus all work data.
+// This is now the PRIMARY source — app.js no longer uses data.json.
 
 export async function loadFromSupabase() {
   try {
     const [
-      { data: mappingsData, error: mErr },
-      { data: alignmentsData, error: aErr },
-      { data: reviewsData, error: rErr },
-      { data: editsData, error: eErr },
-      { data: audioFilesData, error: afErr },
-      { data: transcriptsData, error: tErr },
+      { data: audioData,       error: afErr },
+      { data: transcriptData,  error: tErr  },
+      { data: mappingsData,    error: mErr  },
+      { data: alignmentsData,  error: aErr  },
+      { data: reviewsData,     error: rErr  },
+      { data: editsData,       error: eErr  },
     ] = await Promise.all([
+      supabase.from('audio_files').select('*'),
+      supabase.from('transcripts').select('id,name,year,month,day,first_line,drive_link,r2_transcript_link'),
       supabase.from('mappings').select('*'),
       supabase.from('alignments').select('*'),
       supabase.from('reviews').select('*'),
       supabase.from('transcript_edits').select('*'),
-      supabase.from('audio_files').select('*'),
-      supabase.from('transcripts').select('*'),
     ]);
 
-    if (mErr) console.warn('[DB] load mappings:', mErr.message);
-    if (aErr) console.warn('[DB] load alignments:', aErr.message);
-    if (rErr) console.warn('[DB] load reviews:', rErr.message);
-    if (eErr) console.warn('[DB] load edits:', eErr.message);
     if (afErr) console.warn('[DB] load audio_files:', afErr.message);
-    if (tErr) console.warn('[DB] load transcripts:', tErr.message);
+    if (tErr)  console.warn('[DB] load transcripts:', tErr.message);
+    if (mErr)  console.warn('[DB] load mappings:', mErr.message);
+    if (aErr)  console.warn('[DB] load alignments:', aErr.message);
+    if (rErr)  console.warn('[DB] load reviews:', rErr.message);
+    if (eErr)  console.warn('[DB] load edits:', eErr.message);
+
+    // Sort by numeric ID suffix for consistent ordering
+    const byId = (a, b) => parseInt(a.id.slice(2)) - parseInt(b.id.slice(2));
+
+    const audio = (audioData || []).sort(byId).map(a => ({
+      id: a.id,
+      name: a.name,
+      year: a.year,
+      month: a.month,
+      day: a.day,
+      type: a.type,
+      estMinutes: a.est_minutes,
+      isSelected50hr: a.is_selected_50hr,
+      isBenchmark: a.is_benchmark,
+      r2Link: a.r2_link,
+      driveLink: a.drive_link,
+    }));
+
+    const transcripts = (transcriptData || []).sort(byId).map(t => ({
+      id: t.id,
+      name: t.name,
+      year: t.year,
+      month: t.month,
+      day: t.day,
+      firstLine: t.first_line,
+      driveLink: t.drive_link,
+      r2TranscriptLink: t.r2_transcript_link,
+    }));
 
     const mappings = {};
     (mappingsData || []).forEach(m => {
@@ -223,7 +252,7 @@ export async function loadFromSupabase() {
         confidence: m.confidence,
         matchReason: m.match_reason,
         confirmedBy: m.confirmed_by,
-        confirmedAt: m.confirmed_at,
+        confirmedAt: m.created_at,
       };
     });
 
@@ -256,26 +285,7 @@ export async function loadFromSupabase() {
       };
     });
 
-    // Catalog metadata — used to update isSelected50hr, isBenchmark, r2Link on in-memory audio
-    // and to apply the zombie-mapping fix (Supabase knows the file but has no mapping = deleted).
-    const audioFiles = {};
-    (audioFilesData || []).forEach(a => {
-      audioFiles[a.id] = {
-        isSelected50hr: a.is_selected_50hr,
-        isBenchmark: a.is_benchmark,
-        r2Link: a.r2_link,
-      };
-    });
-
-    const transcripts = {};
-    (transcriptsData || []).forEach(t => {
-      transcripts[t.id] = {
-        firstLine: t.first_line,
-        r2TranscriptLink: t.r2_transcript_link,
-      };
-    });
-
-    return { mappings, alignments, reviews, cleaning, audioFiles, transcripts };
+    return { audio, transcripts, mappings, alignments, reviews, cleaning };
   } catch (err) {
     console.warn('[DB] loadFromSupabase failed:', err.message);
     return null;

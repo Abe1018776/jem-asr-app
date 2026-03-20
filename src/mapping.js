@@ -40,6 +40,20 @@ function scoreMatch(audio, transcript) {
     }
   }
 
+  // Prefer transcripts that have firstLine text (content we can verify)
+  // and slightly boost if the audio's content-type keyword appears in the firstLine.
+  if (transcript.firstLine) {
+    score += 0.05;
+    const firstLineLower = transcript.firstLine.toLowerCase();
+    for (const kw of CONTENT_TYPES) {
+      if (aName.includes(kw) && firstLineLower.includes(kw)) {
+        score += 0.05;
+        reasons.push(`text:${kw}`);
+        break;
+      }
+    }
+  }
+
   return { score: Math.min(score, 1.0), matchReason: reasons.join(' + ') };
 }
 

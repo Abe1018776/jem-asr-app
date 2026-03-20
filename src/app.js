@@ -1,5 +1,5 @@
 import { initState, getState, getStatus, getFilteredRows, exportState, importState, mergeSupabaseData } from './state.js';
-import { loadFromSupabase, bulkSyncAudioFiles, bulkSyncTranscripts, bulkSyncMappings } from './db.js';
+import { loadFromSupabase } from './db.js';
 import { renderTable, updateTable, getSelectedRows } from './table.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
@@ -9,150 +9,22 @@ import { renderKaraokePlayer } from './karaoke.js';
 import { renderAsrConfig, runBenchmark, renderBenchmarkTable } from './benchmark.js';
 import { exportCSV } from './utils.js';
 
-const R2_BASE = 'https://audio.kohnai.ai';
-
 // ── App init ────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const resp = await fetch('/data.json');
-  if (!resp.ok) {
-    const container = document.getElementById('table-container');
-    if (container) {
-      container.innerHTML = '<div class="error-banner" style="padding:2rem;text-align:center;color:#f87171;">Failed to load data. Please refresh.</div>';
-    }
+  const tableContainer = document.getElementById('table-container');
+  tableContainer.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-secondary,#8888aa)">Loading from Supabase…</div>';
+
+  // Supabase is the single source of truth — no data.json needed
+  const remote = await loadFromSupabase();
+  if (!remote?.audio?.length) {
+    tableContainer.innerHTML = '<div style="padding:2rem;text-align:center;color:#f87171;">Failed to load data from Supabase. Please refresh.</div>';
     return;
   }
-  const raw = await resp.json();
 
-  // Transform the mapping-site data.json format into our app format
-  // Add unique IDs, merge selected/matched/unmatched into unified arrays
-  const selectedNames = new Set((raw.selected || []).map(s => s.audioName));
+  const state = initState({ audio: remote.audio, transcripts: remote.transcripts });
+  mergeSupabaseData(remote);
 
-  // Build unified audio array with IDs
-  const audioMap = new Map();
-  (raw.allAudio || []).forEach((a, i) => {
-    const id = 'a_' + i;
-    audioMap.set(a.name, id);
-    a.id = id;
-    a.driveLink = a.link;
-    a.isSelected50hr = selectedNames.has(a.name);
-    a.isBenchmark = false; // Will flag benchmark files below
-  });
-
-  // Build unified transcript array with IDs and firstLine from matched/selected data
-  const firstLines = {};
-  (raw.matched || []).forEach(m => {
-    if (m.firstLine && m.transcriptName) firstLines[m.transcriptName] = m.firstLine;
-  });
-  (raw.selected || []).forEach(s => {
-    if (s.firstLine && s.transcriptName) firstLines[s.transcriptName] = s.firstLine;
-  });
-
-  const transcriptMap = new Map();
-  (raw.allTranscripts || []).forEach((t, i) => {
-    const id = 't_' + i;
-    transcriptMap.set(t.name, id);
-    t.id = id;
-    t.driveLink = t.link;
-    const txtName = t.name.replace(/\.(doc|docx|pdf|rtf|txt)$/i, '.txt');
-    t.r2TranscriptLink = `/api/transcript?name=${encodeURIComponent(txtName)}`;
-    if (!t.firstLine && firstLines[t.name]) t.firstLine = firstLines[t.name];
-  });
-
-  // Build pre-existing mappings from matched pairs
-  const mappings = {};
-  (raw.matched || []).forEach(m => {
-    const audioId = audioMap.get(m.audioName);
-    const transcriptId = transcriptMap.get(m.transcriptName);
-    if (audioId && transcriptId) {
-      mappings[audioId] = {
-        transcriptId,
-        confidence: 0.9,
-        matchReason: 'pre-matched',
-        confirmedBy: 'imported',
-        confirmedAt: raw.generated || new Date().toISOString(),
-      };
-    }
-  });
-  // Also map selected pairs (they may not all be in matched)
-  (raw.selected || []).forEach(s => {
-    const audioId = audioMap.get(s.audioName);
-    const transcriptId = transcriptMap.get(s.transcriptName);
-    if (audioId && transcriptId && !mappings[audioId]) {
-      mappings[audioId] = {
-        transcriptId,
-        confidence: 0.95,
-        matchReason: '50hr-selected',
-        confirmedBy: 'imported',
-        confirmedAt: raw.generated || new Date().toISOString(),
-      };
-    }
-  });
-
-  // Flag the 5 gold standard benchmark files
-  const benchmarkNames = [
-    '0015--5711-Tamuz 12 Sicha 1.mp3',       // 5711 Tamuz 12 Sicha
-    '0142--5715-Tamuz 13d Sicha 3.mp3',       // 5715 Tamuz 13 Sicha
-    '2781--5741-Nissan 11e Mamar.mp3',        // 5741 Nissan 11 Maamar
-    '0003--5711-Shvat 10c Mamar.mp3',         // 5711 10 Shevat Maamar (least clear)
-    '2925--5742-Kislev 19 Sicha 1.mp3',       // 5742 19 Kislev Sicha (later years)
-  ];
-  const benchmarkSet = new Set(benchmarkNames);
-  (raw.allAudio || []).forEach(a => {
-    if (benchmarkSet.has(a.name)) {
-      a.isBenchmark = true;
-      a.isSelected50hr = false; // Benchmark NEVER in training set
-      a.r2Link = `${R2_BASE}/benchmark/${encodeURIComponent(a.name)}`;
-    } else if (selectedNames.has(a.name)) {
-      a.r2Link = `${R2_BASE}/training/${encodeURIComponent(a.name)}`;
-    }
-  });
-
-  const data = {
-    audio: raw.allAudio || [],
-    transcripts: raw.allTranscripts || [],
-    preMappings: mappings, // Pass pre-existing mappings to merge
-  };
-  const state = initState(data);
-
-  // Merge pre-existing mappings (only if no saved mappings exist for those IDs)
-  if (data.preMappings) {
-    for (const [audioId, mapping] of Object.entries(data.preMappings)) {
-      if (!state.mappings[audioId]) {
-        state.mappings[audioId] = mapping;
-      }
-    }
-  }
-
-  // ── Bulk seed catalog to Supabase ────────────────────────────────────
-  // Run once per data.json version. Pushes all audio files, transcripts,
-  // and pre-matched mappings so Supabase becomes the full source of truth.
-  const DATA_SEED_KEY = 'jem-data-seeded-at';
-  const lastSeeded = localStorage.getItem(DATA_SEED_KEY);
-  if (lastSeeded !== raw.generated) {
-    (async () => {
-      try {
-        await bulkSyncAudioFiles(raw.allAudio || []);
-        await bulkSyncTranscripts(raw.allTranscripts || []);
-        // Seed pre-mapped mappings — ignoreDuplicates keeps user-confirmed ones intact
-        await bulkSyncMappings(mappings);
-        localStorage.setItem(DATA_SEED_KEY, raw.generated);
-        console.info('[DB] Catalog seeded to Supabase for version:', raw.generated);
-      } catch (err) {
-        console.warn('[DB] Catalog seed failed:', err);
-      }
-    })();
-  }
-
-  // Load from Supabase in background — merge when ready and re-render
-  loadFromSupabase().then(remote => {
-    if (remote) {
-      mergeSupabaseData(remote);
-      updateTable();
-    }
-  }).catch(err => console.warn('[DB] startup load failed:', err));
-
-  const tableContainer = document.getElementById('table-container');
   const modalOverlay = document.getElementById('modal-overlay');
   const modalContent = document.getElementById('modal-content');
   const modalClose = document.getElementById('modal-close');
@@ -301,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Show mapping suggestions
       const suggestionsDiv = document.createElement('div');
       suggestionsDiv.className = 'suggestions-container';
-      renderSuggestedMatches(audioId, suggestionsDiv, state, (aId, tId) => {
+      renderSuggestedMatches(suggestionsDiv, audioId, state, (aId, tId) => {
         linkMatch(aId, tId, 0.8, 'user selected');
         updateTable();
         onRowExpand(aId); // Re-render expanded panel

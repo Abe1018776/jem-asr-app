@@ -91,56 +91,17 @@ export function getState() {
   return state;
 }
 
-// Merge data loaded from Supabase, overwriting localStorage values.
-// Called once on startup after loadFromSupabase() resolves.
+// Merge work data loaded from Supabase over localStorage cache.
+// Called once on startup. Catalog (audio/transcripts) already comes
+// from Supabase via initState — this only needs to handle work data.
 export function mergeSupabaseData(remote) {
   if (!state || !remote) return;
 
-  // ── Work data ────────────────────────────────────────────────────────
-  if (remote.mappings) Object.assign(state.mappings, remote.mappings);
-  if (remote.cleaning) Object.assign(state.cleaning, remote.cleaning);
+  // Work data — Supabase wins over localStorage cache
+  if (remote.mappings)   Object.assign(state.mappings, remote.mappings);
+  if (remote.cleaning)   Object.assign(state.cleaning, remote.cleaning);
   if (remote.alignments) Object.assign(state.alignments, remote.alignments);
-  if (remote.reviews) Object.assign(state.reviews, remote.reviews);
-
-  // ── Audio catalog metadata ───────────────────────────────────────────
-  // Only promote flags to true — never let a stale false in Supabase
-  // (from early ensureAudioFile calls before flags were computed) override
-  // the correct values derived from data.json. r2Link is safe to overwrite.
-  if (remote.audioFiles && state.audio) {
-    for (const audio of state.audio) {
-      const sb = remote.audioFiles[audio.id];
-      if (!sb) continue;
-      if (sb.isSelected50hr === true) audio.isSelected50hr = true;
-      if (sb.isBenchmark === true) audio.isBenchmark = true;
-      if (sb.r2Link) audio.r2Link = sb.r2Link;
-    }
-  }
-
-  // ── Transcript catalog metadata ──────────────────────────────────────
-  if (remote.transcripts && state.transcripts) {
-    for (const t of state.transcripts) {
-      const sb = remote.transcripts[t.id];
-      if (!sb) continue;
-      if (sb.firstLine && !t.firstLine) t.firstLine = sb.firstLine;
-      if (sb.r2TranscriptLink) t.r2TranscriptLink = sb.r2TranscriptLink;
-    }
-  }
-
-  // ── Zombie-mapping fix ───────────────────────────────────────────────
-  // If Supabase knows an audio file (seeded) but has no mapping row, the
-  // mapping was intentionally deleted. Clear locally-seeded 'imported'
-  // mappings so the deletion persists across reloads.
-  if (remote.audioFiles) {
-    const supabaseMappedIds = new Set(Object.keys(remote.mappings || {}));
-    for (const audioId of Object.keys(remote.audioFiles)) {
-      if (!supabaseMappedIds.has(audioId)) {
-        const local = state.mappings[audioId];
-        if (local && local.confirmedBy === 'imported') {
-          delete state.mappings[audioId];
-        }
-      }
-    }
-  }
+  if (remote.reviews)    Object.assign(state.reviews, remote.reviews);
 
   // Re-run migration so transcriptVersions reflects the merged data
   migrateToVersions();
