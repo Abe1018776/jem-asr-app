@@ -1,4 +1,5 @@
 import { getState, updateState } from './state.js';
+import { deleteMapping } from './db.js';
 import { truncateWords, formatConfidence } from './utils.js';
 
 const CONTENT_TYPES = ['sicha', 'maamar', 'farbrengen'];
@@ -129,6 +130,8 @@ export function unlinkMatch(audioId) {
     const mappings = { ...state.mappings };
     delete mappings[audioId];
     updateState('mappings', null, mappings);
+    // Remove from Supabase so the deletion persists across sessions
+    deleteMapping(audioId).catch(console.warn);
   }
   if (state.transcriptVersions && state.transcriptVersions[audioId]) {
     const versions = { ...state.transcriptVersions };

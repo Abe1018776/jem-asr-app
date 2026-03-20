@@ -95,10 +95,55 @@ export function getState() {
 // Called once on startup after loadFromSupabase() resolves.
 export function mergeSupabaseData(remote) {
   if (!state || !remote) return;
+
+  // ── Work data ────────────────────────────────────────────────────────
   if (remote.mappings) Object.assign(state.mappings, remote.mappings);
   if (remote.cleaning) Object.assign(state.cleaning, remote.cleaning);
   if (remote.alignments) Object.assign(state.alignments, remote.alignments);
   if (remote.reviews) Object.assign(state.reviews, remote.reviews);
+
+  // ── Audio catalog metadata ───────────────────────────────────────────
+  // Supabase is now source of truth for isSelected50hr, isBenchmark, r2Link.
+  if (remote.audioFiles && state.audio) {
+    for (const audio of state.audio) {
+      const sb = remote.audioFiles[audio.id];
+      if (!sb) continue;
+      if (sb.isSelected50hr !== null && sb.isSelected50hr !== undefined) {
+        audio.isSelected50hr = sb.isSelected50hr;
+      }
+      if (sb.isBenchmark !== null && sb.isBenchmark !== undefined) {
+        audio.isBenchmark = sb.isBenchmark;
+      }
+      if (sb.r2Link) audio.r2Link = sb.r2Link;
+    }
+  }
+
+  // ── Transcript catalog metadata ──────────────────────────────────────
+  if (remote.transcripts && state.transcripts) {
+    for (const t of state.transcripts) {
+      const sb = remote.transcripts[t.id];
+      if (!sb) continue;
+      if (sb.firstLine && !t.firstLine) t.firstLine = sb.firstLine;
+      if (sb.r2TranscriptLink) t.r2TranscriptLink = sb.r2TranscriptLink;
+    }
+  }
+
+  // ── Zombie-mapping fix ───────────────────────────────────────────────
+  // If Supabase knows an audio file (seeded) but has no mapping row, the
+  // mapping was intentionally deleted. Clear locally-seeded 'imported'
+  // mappings so the deletion persists across reloads.
+  if (remote.audioFiles) {
+    const supabaseMappedIds = new Set(Object.keys(remote.mappings || {}));
+    for (const audioId of Object.keys(remote.audioFiles)) {
+      if (!supabaseMappedIds.has(audioId)) {
+        const local = state.mappings[audioId];
+        if (local && local.confirmedBy === 'imported') {
+          delete state.mappings[audioId];
+        }
+      }
+    }
+  }
+
   // Re-run migration so transcriptVersions reflects the merged data
   migrateToVersions();
   saveToStorage();

@@ -1,5 +1,5 @@
 import { initState, getState, getStatus, getFilteredRows, exportState, importState, mergeSupabaseData } from './state.js';
-import { loadFromSupabase } from './db.js';
+import { loadFromSupabase, bulkSyncAudioFiles, bulkSyncTranscripts, bulkSyncMappings } from './db.js';
 import { renderTable, updateTable, getSelectedRows } from './table.js';
 import { renderSuggestedMatches, linkMatch, unlinkMatch, renderSearchModal } from './mapping.js';
 import { batchClean } from './cleaning.js';
@@ -122,6 +122,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         state.mappings[audioId] = mapping;
       }
     }
+  }
+
+  // ── Bulk seed catalog to Supabase ────────────────────────────────────
+  // Run once per data.json version. Pushes all audio files, transcripts,
+  // and pre-matched mappings so Supabase becomes the full source of truth.
+  const DATA_SEED_KEY = 'jem-data-seeded-at';
+  const lastSeeded = localStorage.getItem(DATA_SEED_KEY);
+  if (lastSeeded !== raw.generated) {
+    (async () => {
+      try {
+        await bulkSyncAudioFiles(raw.allAudio || []);
+        await bulkSyncTranscripts(raw.allTranscripts || []);
+        // Seed pre-mapped mappings — ignoreDuplicates keeps user-confirmed ones intact
+        await bulkSyncMappings(mappings);
+        localStorage.setItem(DATA_SEED_KEY, raw.generated);
+        console.info('[DB] Catalog seeded to Supabase for version:', raw.generated);
+      } catch (err) {
+        console.warn('[DB] Catalog seed failed:', err);
+      }
+    })();
   }
 
   // Load from Supabase in background — merge when ready and re-render
