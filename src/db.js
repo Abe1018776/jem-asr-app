@@ -129,7 +129,7 @@ export function syncStateKey(key, audioId, value, audioEntry) {
 // Called once on startup when data.json has changed, to ensure the full
 // catalog and pre-matched mappings exist in Supabase.
 
-const CHUNK = 500;
+const CHUNK = 200;
 
 export async function bulkSyncAudioFiles(audioArray) {
   for (let i = 0; i < audioArray.length; i += CHUNK) {
