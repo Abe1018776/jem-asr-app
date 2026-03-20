@@ -125,13 +125,33 @@ input {
 /* === Filter Bar === */
 .filter-bar {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 16px;
   padding: 12px 24px;
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  padding-left: 4px;
+}
+
+.filter-group + .filter-group {
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
 }
 
 .filter-pill {

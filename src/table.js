@@ -686,6 +686,10 @@ function updateFilterCounts() {
     'count-fifty-cleaned': 'fifty-cleaned',
     'count-fifty-aligned': 'fifty-aligned',
     'count-fifty-approved': 'fifty-approved',
+    'count-all': 'all',
+    'count-unmapped': 'unmapped',
+    'count-approved': 'approved',
+    'count-benchmark': 'benchmark',
   };
   for (const [elId, stateKey] of Object.entries(map)) {
     const el = document.getElementById(elId);

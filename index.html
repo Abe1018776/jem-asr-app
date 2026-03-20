@@ -18,13 +18,25 @@
   </header>
 
   <nav class="filter-bar">
-    <div class="filter-pills">
-      <button class="filter-pill active" data-filter="fifty">All <span class="badge" id="count-fifty">0</span></button>
-      <button class="filter-pill" data-filter="fifty-unmapped">Unmapped <span class="badge" id="count-fifty-unmapped">0</span></button>
-      <button class="filter-pill" data-filter="fifty-mapped">Mapped <span class="badge" id="count-fifty-mapped">0</span></button>
-      <button class="filter-pill" data-filter="fifty-cleaned">Cleaned <span class="badge" id="count-fifty-cleaned">0</span></button>
-      <button class="filter-pill" data-filter="fifty-aligned">Aligned <span class="badge" id="count-fifty-aligned">0</span></button>
-      <button class="filter-pill" data-filter="fifty-approved">Approved <span class="badge" id="count-fifty-approved">0</span></button>
+    <div class="filter-group">
+      <span class="filter-group-label">50hr Collection</span>
+      <div class="filter-pills">
+        <button class="filter-pill active" data-filter="fifty">All <span class="badge" id="count-fifty">0</span></button>
+        <button class="filter-pill" data-filter="fifty-unmapped">Unmapped <span class="badge" id="count-fifty-unmapped">0</span></button>
+        <button class="filter-pill" data-filter="fifty-mapped">Mapped <span class="badge" id="count-fifty-mapped">0</span></button>
+        <button class="filter-pill" data-filter="fifty-cleaned">Cleaned <span class="badge" id="count-fifty-cleaned">0</span></button>
+        <button class="filter-pill" data-filter="fifty-aligned">Aligned <span class="badge" id="count-fifty-aligned">0</span></button>
+        <button class="filter-pill" data-filter="fifty-approved">Approved <span class="badge" id="count-fifty-approved">0</span></button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-group-label">Full Archive</span>
+      <div class="filter-pills">
+        <button class="filter-pill" data-filter="all">All <span class="badge" id="count-all">0</span></button>
+        <button class="filter-pill" data-filter="unmapped">Unmapped <span class="badge" id="count-unmapped">0</span></button>
+        <button class="filter-pill" data-filter="approved">Approved <span class="badge" id="count-approved">0</span></button>
+        <button class="filter-pill" data-filter="benchmark">Benchmark <span class="badge" id="count-benchmark">0</span></button>
+      </div>
     </div>
     <div class="filter-controls">
       <select id="filter-year" class="filter-select"><option value="">All Years</option></select>
